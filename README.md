@@ -1,6 +1,6 @@
-# 🚀 Next.js + Supabase 快速启动模板
+# 🚀 FDX Smart Work 2.0
 
-一个现代化的 Next.js + Supabase 全栈应用模板，采用 API 路由代理架构，完美解决自部署环境的 CORS 限制和安全性问题。
+基于 Next.js + Supabase 的智能工作平台，采用 API 路由代理架构，提供完整的全栈解决方案，完美解决自部署环境的 CORS 限制和安全性问题。
 
 ## ✨ 特色功能
 
@@ -26,8 +26,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone <repository-url>
-cd my-supabase-app
+git clone https://github.com/SANDSAIGC/fdx-smart-work-2.0.git
+cd fdx-smart-work-2.0
 ```
 
 ### 2. 安装依赖
@@ -57,7 +57,7 @@ npm run dev
 ## 📁 项目结构
 
 ```
-my-supabase-app/
+fdx-smart-work-2.0/
 ├── src/
 │   ├── app/
 │   │   ├── api/              # API 路由代理
