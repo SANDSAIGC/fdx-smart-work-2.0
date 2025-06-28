@@ -4,7 +4,23 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Server, Database, Zap, Shield } from "lucide-react";
+import { Footer } from "@/components/ui/footer";
+import {
+  CheckCircle,
+  XCircle,
+  Database,
+  Factory,
+  FlaskConical,
+  Rocket,
+  Users,
+  ClipboardList,
+  BarChart3,
+  Clock,
+  Trophy,
+  Building2,
+  Zap,
+  PartyPopper
+} from "lucide-react";
 
 export default function Home() {
   const [healthStatus, setHealthStatus] = useState<any>(null);
@@ -31,11 +47,12 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">
-            🚀 Next.js + Supabase 快速启动模板
+          <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-2">
+            <Factory className="h-8 w-8" />
+            FDX SMART WORK 2.0
           </h1>
           <p className="text-xl text-muted-foreground mb-6">
-            采用 API 路由代理架构，完美解决自部署环境的 CORS 限制和安全性问题
+            智能化工业数据管理平台，采用现代化架构设计
           </p>
           <div className="flex justify-center gap-2 mb-8">
             <Badge variant="secondary">Next.js 15.3.4</Badge>
@@ -43,56 +60,67 @@ export default function Home() {
             <Badge variant="secondary">Tailwind CSS</Badge>
             <Badge variant="secondary">shadcn/ui</Badge>
             <Badge variant="secondary">Supabase</Badge>
+            <Badge variant="secondary">API 代理架构</Badge>
           </div>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        {/* 架构设计说明 */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           <Card>
-            <CardHeader className="text-center">
-              <Server className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <CardTitle className="text-lg">API 路由代理</CardTitle>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                系统架构特点
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                绕过 CORS 限制，服务端到服务端通信
-              </p>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">API代理</Badge>
+                  绕过 CORS 限制，密钥安全管理
+                </li>
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">响应式</Badge>
+                  完整的移动端适配设计
+                </li>
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">类型安全</Badge>
+                  TypeScript 全栈类型保护
+                </li>
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">现代UI</Badge>
+                  shadcn/ui 组件库，支持暗色模式
+                </li>
+              </ul>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="text-center">
-              <Shield className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <CardTitle className="text-lg">安全管理</CardTitle>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                项目核心优势
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                密钥只在服务端使用，更高安全性
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="text-center">
-              <Zap className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <CardTitle className="text-lg">开箱即用</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                预配置的测试环境，无需额外设置
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="text-center">
-              <Database className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <CardTitle className="text-lg">完整 CRUD</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                提供创建、读取、更新、删除的完整API接口
-              </p>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">快速启动</Badge>
+                  5分钟完成项目初始化
+                </li>
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">开箱即用</Badge>
+                  预配置的测试环境和组件
+                </li>
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">安全可靠</Badge>
+                  服务端密钥管理，数据验证
+                </li>
+                <li className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">易于扩展</Badge>
+                  模块化设计，便于功能扩展
+                </li>
+              </ul>
             </CardContent>
           </Card>
         </div>
@@ -172,11 +200,111 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* Footer */}
+        {/* 全页面导航区域 */}
+        <Card className="mt-12">
+          <CardHeader>
+            <CardTitle className="text-center flex items-center justify-center gap-2">
+              <Rocket className="h-5 w-5" />
+              功能模块导航
+            </CardTitle>
+            <CardDescription className="text-center">
+              选择您要访问的功能模块
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Button
+                onClick={() => window.location.href = '/lab'}
+                className="flex items-center gap-2 h-16 text-left justify-start"
+                variant="outline"
+              >
+                <FlaskConical className="h-8 w-8 text-primary" />
+                <div>
+                  <div className="font-semibold">化验室</div>
+                  <div className="text-xs text-muted-foreground">样品数据管理</div>
+                </div>
+              </Button>
+
+              <Button
+                onClick={() => console.log('角色管理')}
+                className="flex items-center gap-2 h-16 text-left justify-start"
+                variant="outline"
+                disabled
+              >
+                <Users className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <div className="font-semibold">角色管理</div>
+                  <div className="text-xs text-muted-foreground">用户权限设置</div>
+                </div>
+              </Button>
+
+              <Button
+                onClick={() => console.log('任务管理')}
+                className="flex items-center gap-2 h-16 text-left justify-start"
+                variant="outline"
+                disabled
+              >
+                <ClipboardList className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <div className="font-semibold">任务管理</div>
+                  <div className="text-xs text-muted-foreground">工作流程管理</div>
+                </div>
+              </Button>
+
+              <Button
+                onClick={() => console.log('情况监控')}
+                className="flex items-center gap-2 h-16 text-left justify-start"
+                variant="outline"
+                disabled
+              >
+                <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <div className="font-semibold">情况监控</div>
+                  <div className="text-xs text-muted-foreground">实时状态监控</div>
+                </div>
+              </Button>
+
+              <Button
+                onClick={() => console.log('考勤管理')}
+                className="flex items-center gap-2 h-16 text-left justify-start"
+                variant="outline"
+                disabled
+              >
+                <Clock className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <div className="font-semibold">考勤管理</div>
+                  <div className="text-xs text-muted-foreground">员工考勤统计</div>
+                </div>
+              </Button>
+
+              <Button
+                onClick={() => console.log('积分系统')}
+                className="flex items-center gap-2 h-16 text-left justify-start"
+                variant="outline"
+                disabled
+              >
+                <Trophy className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <div className="font-semibold">积分系统</div>
+                  <div className="text-xs text-muted-foreground">绩效积分管理</div>
+                </div>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 成功提示 */}
         <div className="text-center mt-12 text-muted-foreground">
-          <p>🎉 恭喜！您的 Next.js + Supabase 项目已经可以运行了！</p>
+          <p className="flex items-center justify-center gap-2">
+            <PartyPopper className="h-5 w-5" />
+            FDX SMART WORK 2.0 智能化工业数据管理平台已就绪！
+          </p>
+          <p className="text-sm mt-2">基于 Next.js + Supabase 构建的现代化企业级应用</p>
         </div>
       </div>
+
+      {/* 统一底部签名 */}
+      <Footer />
     </div>
   );
 }
