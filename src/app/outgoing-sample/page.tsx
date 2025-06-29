@@ -15,13 +15,7 @@ import {
   DialogTrigger,
   DialogClose
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DatePicker } from "@/components/ui/date-picker";
+import { HamburgerMenu } from "@/components/hamburger-menu";
 import { cn } from "@/lib/utils";
 import {
   CalendarIcon,
@@ -46,11 +40,12 @@ import { Footer } from "@/components/ui/footer";
 
 // 表单数据接口
 interface OutgoingSampleFormData {
-  date: Date | undefined;
+  date: string;
+  receivingUnit: string;
+  sampleNumber: string;
   moisture: string;
   pbGrade: string;
   znGrade: string;
-  remarks: string;
 }
 
 // 计算器数据接口
@@ -68,11 +63,12 @@ interface GradeCalculatorData {
 
 // 初始表单数据
 const initialFormData: OutgoingSampleFormData = {
-  date: undefined,
+  date: new Date().toISOString().split('T')[0],
+  receivingUnit: "金鼎锌业",
+  sampleNumber: "",
   moisture: "",
   pbGrade: "",
   znGrade: "",
-  remarks: "",
 };
 
 // 初始计算器数据
@@ -225,75 +221,28 @@ export default function OutgoingSamplePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* 页面头部 */}
-      <div className="container mx-auto p-6">
-        <div className="relative mb-6">
-          {/* 汉堡菜单 - 左上角 */}
-          <div className="absolute top-0 left-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center">
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem onClick={() => console.log('角色管理')}>
-                  <User className="mr-2 h-4 w-4" />
-                  角色
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => console.log('任务管理')}>
-                  <Bell className="mr-2 h-4 w-4" />
-                  任务
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => console.log('情况监控')}>
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  情况
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => console.log('考勤管理')}>
-                  <UserCheck className="mr-2 h-4 w-4" />
-                  考勤
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => console.log('积分系统')}>
-                  <Trophy className="mr-2 h-4 w-4" />
-                  积分
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/')}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  登出
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* 返回按钮 - 左侧 */}
-          <div className="absolute top-0 left-16">
+      {/* Header */}
+      <div className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push('/lab')}
-              className="flex items-center gap-2"
+              variant="ghost"
+              size="icon"
+              onClick={() => router.back()}
+              className="h-8 w-8"
             >
               <ArrowLeft className="h-4 w-4" />
-              返回化验室
             </Button>
+            <h1 className="text-lg font-semibold">出厂样化验</h1>
           </div>
-
-          {/* 主题切换按钮 - 右上角 */}
-          <div className="absolute top-0 right-0">
+          <div className="flex items-center gap-2">
             <ThemeToggle />
-          </div>
-
-          {/* 页面标题 - 居中 */}
-          <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-              <Package className="h-6 w-6 sm:h-8 sm:w-8" />
-              出厂样化验
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground px-4">
-              出厂精矿化验数据填报系统
-            </p>
+            <HamburgerMenu />
           </div>
         </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6 space-y-6">
 
         {/* 主要内容 */}
         <Card className="max-w-4xl mx-auto">
@@ -312,10 +261,38 @@ export default function OutgoingSamplePage() {
               {/* 日期选择 */}
               <div className="space-y-2">
                 <Label htmlFor="date">日期</Label>
-                <DatePicker
-                  date={formData.date}
-                  onDateChange={(date) => updateFormField('date', date)}
-                  placeholder="选择日期"
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => updateFormField('date', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* 样品信息 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 收货单位 */}
+              <div className="space-y-2">
+                <Label htmlFor="receivingUnit">收货单位</Label>
+                <Input
+                  id="receivingUnit"
+                  type="text"
+                  placeholder="请输入收货单位"
+                  value={formData.receivingUnit}
+                  onChange={(e) => updateFormField('receivingUnit', e.target.value)}
+                />
+              </div>
+
+              {/* 样品编号 */}
+              <div className="space-y-2">
+                <Label htmlFor="sampleNumber">样品编号</Label>
+                <Input
+                  id="sampleNumber"
+                  type="text"
+                  placeholder="请输入样品编号"
+                  value={formData.sampleNumber}
+                  onChange={(e) => updateFormField('sampleNumber', e.target.value)}
                 />
               </div>
             </div>
@@ -524,17 +501,7 @@ export default function OutgoingSamplePage() {
               </DialogContent>
             </Dialog>
 
-            {/* 备注 */}
-            <div className="space-y-2">
-              <Label htmlFor="remarks">备注</Label>
-              <Textarea
-                id="remarks"
-                placeholder="请输入备注信息（可选）"
-                value={formData.remarks}
-                onChange={(e) => updateFormField('remarks', e.target.value)}
-                rows={3}
-              />
-            </div>
+
 
             {/* 提交状态显示 */}
             {submitStatus !== 'idle' && (

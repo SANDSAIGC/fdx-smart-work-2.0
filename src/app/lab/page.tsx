@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { AuthGuard } from "@/components/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Footer } from "@/components/ui/footer";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HamburgerMenu } from "@/components/hamburger-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,20 +27,11 @@ import {
   RefreshCw,
   Moon,
   Sun,
-  Settings,
-  User,
-  Bell,
-  AlertTriangle,
-  UserCheck,
-  Trophy,
-  LogOut,
-  Menu,
   Calendar,
   BarChart3,
   TrendingUp
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
@@ -292,7 +286,7 @@ function ComparisonChart({
   );
 }
 
-export default function LabPage() {
+function LabPageContent() {
   const router = useRouter();
 
   // 状态管理
@@ -467,39 +461,7 @@ export default function LabPage() {
       <div className="relative">
         {/* 汉堡菜单 - 左上角 */}
         <div className="absolute top-0 left-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center">
-                <Menu className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem onClick={() => console.log('角色管理')}>
-                <User className="mr-2 h-4 w-4" />
-                角色
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log('任务管理')}>
-                <Bell className="mr-2 h-4 w-4" />
-                任务
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log('情况监控')}>
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                情况
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log('考勤管理')}>
-                <UserCheck className="mr-2 h-4 w-4" />
-                考勤
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log('积分系统')}>
-                <Trophy className="mr-2 h-4 w-4" />
-                积分
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/')}>
-                <LogOut className="mr-2 h-4 w-4" />
-                登出
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <HamburgerMenu />
         </div>
 
         {/* 主题切换按钮 - 右上角 */}
@@ -600,19 +562,19 @@ export default function LabPage() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1">
                   <label className="text-xs text-muted-foreground mb-1 block">开始日期</label>
-                  <DatePicker
-                    date={startDate}
-                    onDateChange={setStartDate}
-                    placeholder="选择开始日期"
+                  <Input
+                    type="date"
+                    value={startDate ? startDate.toISOString().split('T')[0] : ""}
+                    onChange={(e) => setStartDate(e.target.value ? new Date(e.target.value) : undefined)}
                     className="w-full"
                   />
                 </div>
                 <div className="flex-1">
                   <label className="text-xs text-muted-foreground mb-1 block">结束日期</label>
-                  <DatePicker
-                    date={endDate}
-                    onDateChange={setEndDate}
-                    placeholder="选择结束日期"
+                  <Input
+                    type="date"
+                    value={endDate ? endDate.toISOString().split('T')[0] : ""}
+                    onChange={(e) => setEndDate(e.target.value ? new Date(e.target.value) : undefined)}
                     className="w-full"
                   />
                 </div>
@@ -874,5 +836,13 @@ export default function LabPage() {
       {/* 统一底部签名 */}
       <Footer />
     </div>
+  );
+}
+
+export default function LabPage() {
+  return (
+    <AuthGuard>
+      <LabPageContent />
+    </AuthGuard>
   );
 }
