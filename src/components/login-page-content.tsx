@@ -14,37 +14,12 @@ export function LoginPageContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // 如果用户已经认证，立即重定向
+    // 注意：登录重定向现在由登录表单直接处理，这里不再需要重定向逻辑
+    // 这样可以避免重复重定向导致的错误页面跳转
     if (isAuthenticated && user) {
-      console.log('✅ [登录页面] 用户已登录，立即重定向');
-
-      // 处理重定向逻辑
-      const redirectToWorkspace = async () => {
-        try {
-          const redirectParam = searchParams.get('redirect');
-
-          if (redirectParam) {
-            console.log('🎯 [登录页面] 发现重定向参数，返回原始访问页面:', redirectParam);
-            router.replace(redirectParam);
-            return;
-          }
-
-          // 如果没有重定向参数，使用智能重定向到工作页面
-          console.log('🔄 [登录页面] 开始智能重定向查询...');
-          const redirectRoute = await getSmartRedirectRoute(user);
-          console.log('🎯 [登录页面] 智能重定向到:', redirectRoute);
-          router.replace(redirectRoute);
-
-        } catch (error) {
-          console.error('❌ [登录页面] 重定向异常:', error);
-          router.replace('/lab');
-        }
-      };
-
-      // 使用 setTimeout 确保状态更新完成后再重定向
-      setTimeout(redirectToWorkspace, 0);
+      console.log('✅ [登录页面] 用户已登录，但重定向由登录表单处理');
     }
-  }, [isAuthenticated, user, router, searchParams]);
+  }, [isAuthenticated, user]);
 
   // 如果正在加载，显示加载状态
   if (isLoading) {

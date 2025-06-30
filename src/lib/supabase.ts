@@ -136,6 +136,213 @@ export class UserService {
   }
 }
 
+// 样品数据接口定义
+export interface ShiftSampleData {
+  日期: string
+  班次: string
+  '氧化锌原矿-水份（%）': number
+  '氧化锌原矿-Pb全品位（%）': number
+  '氧化锌原矿-Zn全品位（%）': number
+  '氧化锌精矿-Pb品位（%）': number
+  '氧化锌精矿-Zn品位（%）': number
+  '尾矿-Pb全品位（%）': number
+  '尾矿-Zn全品位（%）': number
+}
+
+export interface FilterSampleData {
+  操作员: string
+  开始时间: string
+  结束时间: string
+  水份: number
+  铅品位: number
+  锌品位: number
+  备注?: string
+}
+
+export interface IncomingSampleData {
+  计量日期: string
+  发货单位名称: string
+  原矿类型: string
+  '水份(%)': number
+  Pb: number
+  Zn: number
+}
+
+export interface OutgoingSampleData {
+  计量日期: string
+  收货单位名称: string
+  样品编号: string
+  '水份(%)': number
+  Pb: number
+  Zn: number
+}
+
+// 获取当前用户信息的辅助函数
+async function getCurrentUserHeaders(): Promise<Record<string, string>> {
+  try {
+    // 从localStorage获取当前用户ID
+    const currentUserId = localStorage.getItem('fdx_current_user_id');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (currentUserId) {
+      headers['x-user-id'] = currentUserId;
+    }
+
+    // 如果有会话token，也可以添加到Authorization头
+    const sessionData = localStorage.getItem('fdx_session_data');
+    if (sessionData) {
+      try {
+        const session = JSON.parse(sessionData);
+        if (session.token) {
+          headers['Authorization'] = `Bearer ${session.token}`;
+        }
+      } catch (e) {
+        console.warn('解析会话数据失败:', e);
+      }
+    }
+
+    return headers;
+  } catch (error) {
+    console.error('获取用户头信息失败:', error);
+    return {
+      'Content-Type': 'application/json',
+    };
+  }
+}
+
+// 样品数据服务类
+export class SampleDataService {
+  // 提交班样数据到生产日报-FDX表
+  static async submitShiftSample(data: ShiftSampleData): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const headers = await getCurrentUserHeaders();
+
+      const response = await fetch('/api/samples/shift-sample', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      })
+
+      // 检查HTTP状态码
+      if (!response.ok) {
+        console.error('❌ [班样服务] HTTP错误:', response.status, response.statusText)
+        return {
+          success: false,
+          message: `网络请求失败: ${response.status} ${response.statusText}`
+        }
+      }
+
+      const result = await response.json()
+      console.log('📤 [班样服务] API响应:', result)
+      return result
+    } catch (error) {
+      console.error('❌ [班样服务] 网络异常:', error)
+      return {
+        success: false,
+        message: `网络连接失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+
+  // 提交压滤样数据到压滤样化验记录表
+  static async submitFilterSample(data: FilterSampleData): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const headers = await getCurrentUserHeaders();
+
+      const response = await fetch('/api/samples/filter-sample', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      })
+
+      // 检查HTTP状态码
+      if (!response.ok) {
+        console.error('❌ [压滤样服务] HTTP错误:', response.status, response.statusText)
+        return {
+          success: false,
+          message: `网络请求失败: ${response.status} ${response.statusText}`
+        }
+      }
+
+      const result = await response.json()
+      console.log('📤 [压滤样服务] API响应:', result)
+      return result
+    } catch (error) {
+      console.error('❌ [压滤样服务] 网络异常:', error)
+      return {
+        success: false,
+        message: `网络连接失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+
+  // 提交进厂样数据到进厂原矿-FDX表
+  static async submitIncomingSample(data: IncomingSampleData): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const headers = await getCurrentUserHeaders();
+
+      const response = await fetch('/api/samples/incoming-sample', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      })
+
+      // 检查HTTP状态码
+      if (!response.ok) {
+        console.error('❌ [进厂样服务] HTTP错误:', response.status, response.statusText)
+        return {
+          success: false,
+          message: `网络请求失败: ${response.status} ${response.statusText}`
+        }
+      }
+
+      const result = await response.json()
+      console.log('📤 [进厂样服务] API响应:', result)
+      return result
+    } catch (error) {
+      console.error('❌ [进厂样服务] 网络异常:', error)
+      return {
+        success: false,
+        message: `网络连接失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+
+  // 提交出厂样数据到出厂精矿-FDX表
+  static async submitOutgoingSample(data: OutgoingSampleData): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const headers = await getCurrentUserHeaders();
+
+      const response = await fetch('/api/samples/outgoing-sample', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      })
+
+      // 检查HTTP状态码
+      if (!response.ok) {
+        console.error('❌ [出厂样服务] HTTP错误:', response.status, response.statusText)
+        return {
+          success: false,
+          message: `网络请求失败: ${response.status} ${response.statusText}`
+        }
+      }
+
+      const result = await response.json()
+      console.log('📤 [出厂样服务] API响应:', result)
+      return result
+    } catch (error) {
+      console.error('❌ [出厂样服务] 网络异常:', error)
+      return {
+        success: false,
+        message: `网络连接失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+}
+
 // 头像存储服务类
 export class AvatarService {
   // 上传头像到 Supabase Storage
@@ -143,11 +350,11 @@ export class AvatarService {
     try {
       // 1. 压缩图片（如果需要）
       const compressedFile = await this.compressImage(file)
-      
+
       // 2. 生成文件名
       const fileExt = file.name.split('.').pop()
       const fileName = `${userId}/${Date.now()}.${fileExt}`
-      
+
       // 3. 上传到 Supabase Storage
       const { data, error } = await supabase.storage
         .from('avatars')

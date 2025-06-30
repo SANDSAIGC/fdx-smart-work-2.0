@@ -11,7 +11,7 @@ export default function Home() {
   const hasRedirected = useRef(false); // 防止重复重定向
 
   useEffect(() => {
-    const handleRedirect = async () => {
+    const handleRedirect = () => {
       // 如果正在加载或已经重定向过，则不执行
       if (isLoading || hasRedirected.current) {
         return;
@@ -22,12 +22,12 @@ export default function Home() {
         console.log('✅ [首页] 用户已登录，开始智能重定向查询...');
         console.log('🔍 [首页] 用户信息:', {
           姓名: user.name,
-          工作页面: user.workPage,
+          重定向路由: user.redirectRoute,
           职称: user.position
         });
 
         hasRedirected.current = true; // 标记已重定向
-        const redirectRoute = await getSmartRedirectRoute(user);
+        const redirectRoute = getSmartRedirectRoute(user);
         console.log('🎯 [首页] 智能重定向到:', redirectRoute);
         router.replace(redirectRoute);
       } else if (!isAuthenticated) {

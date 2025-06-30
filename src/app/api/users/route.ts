@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const username = searchParams.get('username');
 
     // 构建查询URL - 使用URL编码的中文表名和标准化字段名
-    let queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('用户资料')}?select=id,账号,姓名,职称,部门,联系电话,微信号,avatar_url,created_at,updated_at`;
+    let queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('用户资料')}?select=id,账号,姓名,职称,部门,联系电话,微信号,重定向路由,avatar_url,created_at,updated_at`;
 
     if (id) {
       queryUrl += `&id=eq.${id}`;
@@ -31,50 +31,75 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const response = await fetch(queryUrl, {
-      headers: {
-        'apikey': anonKey,
-        'Authorization': `Bearer ${anonKey}`,
-        'Content-Type': 'application/json'
+    // 发送HTTP请求到Supabase，增加重试机制
+    let response;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        response = await fetch(queryUrl, {
+          headers: {
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+            'Content-Type': 'application/json'
+          },
+          signal: AbortSignal.timeout(10000) // 10秒超时
+        });
+
+        if (response.ok) {
+          break; // 成功，跳出重试循环
+        }
+      } catch (error) {
+        console.log(`❌ [用户API GET] 第${retryCount + 1}次尝试失败:`, error);
+        retryCount++;
+
+        if (retryCount >= maxRetries) {
+          throw error; // 达到最大重试次数，抛出错误
+        }
+
+        // 等待一段时间后重试
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
       }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const user = data.length > 0 ? data[0] : null;
-
-      if (!user) {
-        return NextResponse.json({
-          success: false,
-          error: 'User not found'
-        }, { status: 404 });
-      }
-
-      // 映射标准化中文字段到英文接口
-      const mappedUser = {
-        id: user.id,
-        username: user.账号,
-        name: user.姓名,
-        position: user.职称 || '',
-        department: user.部门 || '',
-        phone: user.联系电话 || '',
-        wechat: user.微信号 || '',
-        points: 0, // 暂无对应字段
-        avatar_url: user.avatar_url,
-        created_at: user.created_at,
-        updated_at: user.updated_at
-      };
-
-      return NextResponse.json({ success: true, data: mappedUser });
-    } else {
-      const errorText = await response.text();
-      console.error('Supabase error:', errorText);
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Query failed',
-        details: errorText 
-      }, { status: response.status });
     }
+
+    if (!response || !response.ok) {
+      const errorText = response ? await response.text() : 'Network error';
+      console.error('Supabase error:', errorText);
+      return NextResponse.json({
+        success: false,
+        error: 'Query failed',
+        details: errorText
+      }, { status: response?.status || 500 });
+    }
+
+    const data = await response.json();
+    const user = data.length > 0 ? data[0] : null;
+
+    if (!user) {
+      return NextResponse.json({
+        success: false,
+        error: 'User not found'
+      }, { status: 404 });
+    }
+
+    // 映射标准化中文字段到英文接口
+    const mappedUser = {
+      id: user.id,
+      username: user.账号,
+      name: user.姓名,
+      position: user.职称 || '',
+      department: user.部门 || '',
+      phone: user.联系电话 || '',
+      wechat: user.微信号 || '',
+      redirectRoute: user.重定向路由 || '/lab', // 新增重定向路由字段
+      points: 0, // 暂无对应字段
+      avatar_url: user.avatar_url,
+      created_at: user.created_at,
+      updated_at: user.updated_at
+    };
+
+    return NextResponse.json({ success: true, data: mappedUser });
   } catch (error) {
     console.error('Get user error:', error);
     return NextResponse.json({ 
@@ -141,7 +166,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    console.log('🔑 [用户API] 使用MCP Supabase工具进行数据库操作');
+    console.log('🔑 [用户API] 使用HTTP API进行数据库操作');
 
     const { id, ...updateData } = await request.json();
 
@@ -163,6 +188,7 @@ export async function PUT(request: NextRequest) {
     if (updateData.department) chineseUpdateData.部门 = updateData.department;
     if (updateData.phone) chineseUpdateData.联系电话 = updateData.phone;
     if (updateData.wechat) chineseUpdateData.微信号 = updateData.wechat;
+    if (updateData.redirectRoute) chineseUpdateData.重定向路由 = updateData.redirectRoute;
     if (updateData.avatar_url !== undefined) chineseUpdateData.avatar_url = updateData.avatar_url;
 
     console.log('🔄 [用户API] 准备更新用户，ID:', id);
@@ -188,38 +214,58 @@ export async function PUT(request: NextRequest) {
       部门: chineseUpdateData.部门 || '化验室',
       联系电话: chineseUpdateData.联系电话 || '13800000006',
       微信号: chineseUpdateData.微信号 || null,
+      重定向路由: chineseUpdateData.重定向路由 || '/lab',
       avatar_url: chineseUpdateData.avatar_url,
       created_at: '2025-03-23T04:00:09.383Z',
       updated_at: chineseUpdateData.updated_at
     };
 
-    try {
-      const response = await fetch(`${supabaseUrl}/rest/v1/${encodeURIComponent('用户资料')}?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(chineseUpdateData)
-      });
+    // 发送HTTP请求到Supabase，增加重试机制
+    let response;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result && result.length > 0) {
-          data = result[0];
-          console.log('✅ [用户API] 数据库更新成功:', data);
+    while (retryCount < maxRetries) {
+      try {
+        response = await fetch(`${supabaseUrl}/rest/v1/${encodeURIComponent('用户资料')}?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(chineseUpdateData),
+          signal: AbortSignal.timeout(10000) // 10秒超时
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result && result.length > 0) {
+            data = result[0];
+            console.log('✅ [用户API] 数据库更新成功:', data);
+          } else {
+            console.log('🔄 [用户API] 数据库更新成功，使用默认数据');
+          }
+          break; // 成功，跳出重试循环
         } else {
-          console.log('🔄 [用户API] 数据库更新成功，使用默认数据');
+          console.error('❌ [用户API] Supabase更新失败:', response.status, response.statusText);
+          if (retryCount >= maxRetries - 1) {
+            console.log('🔄 [用户API] 达到最大重试次数，使用降级模式');
+          }
         }
-      } else {
-        console.error('❌ [用户API] Supabase更新失败:', response.status, response.statusText);
-        console.log('🔄 [用户API] 使用降级模式，返回默认数据');
+      } catch (error) {
+        console.log(`❌ [用户API] 第${retryCount + 1}次尝试失败:`, error);
+        retryCount++;
+
+        if (retryCount >= maxRetries) {
+          console.log('🔄 [用户API] 网络错误，使用降级模式');
+          break;
+        }
+
+        // 等待一段时间后重试
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
       }
-    } catch (error) {
-      console.error('❌ [用户API] 网络错误:', error);
-      console.log('🔄 [用户API] 网络错误，使用降级模式');
     }
 
     // 映射标准化中文字段到英文接口
@@ -231,6 +277,7 @@ export async function PUT(request: NextRequest) {
       department: data.部门 || '',
       phone: data.联系电话 || '',
       wechat: data.微信号 || '',
+      redirectRoute: data.重定向路由 || '/lab',
       points: 0, // 暂无对应字段
       avatar_url: data.avatar_url,
       created_at: data.created_at,

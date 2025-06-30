@@ -38,6 +38,7 @@ import {
   Clock
 } from "lucide-react";
 import { Footer } from "@/components/ui/footer";
+import { SampleDataService } from "@/lib/supabase";
 
 // 表单数据接口
 interface ShiftSampleFormData {
@@ -205,16 +206,39 @@ export default function ShiftSamplePage() {
     setSubmitStatus('idle');
 
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSubmitStatus('success');
-      setSubmitMessage('班样数据提交成功！');
-      setFormData(initialFormData);
+      // 准备提交数据，映射到数据库字段
+      const submitData = {
+        日期: formData.date,
+        班次: formData.shift,
+        '氧化锌原矿-水份（%）': formData.originalMoisture,
+        '氧化锌原矿-Pb全品位（%）': formData.originalPbGrade,
+        '氧化锌原矿-Zn全品位（%）': formData.originalZnGrade,
+        '氧化锌精矿-Pb品位（%）': formData.concentratePbGrade,
+        '氧化锌精矿-Zn品位（%）': formData.concentrateZnGrade,
+        '尾矿-Pb全品位（%）': formData.tailingsPbGrade,
+        '尾矿-Zn全品位（%）': formData.tailingsZnGrade
+      };
+
+      console.log('🔬 [班样页面] 准备提交数据:', submitData);
+
+      // 调用数据服务提交数据
+      const result = await SampleDataService.submitShiftSample(submitData);
+
+      if (result.success) {
+        setSubmitStatus('success');
+        setSubmitMessage(result.message);
+        setFormData(initialFormData);
+        console.log('✅ [班样页面] 提交成功:', result);
+      } else {
+        setSubmitStatus('error');
+        setSubmitMessage(result.message);
+        console.error('❌ [班样页面] 提交失败:', result);
+      }
+
       setTimeout(() => setSubmitStatus('idle'), 3000);
 
     } catch (error) {
-      console.error('提交失败:', error);
+      console.error('❌ [班样页面] 提交异常:', error);
       setSubmitStatus('error');
       setSubmitMessage(`提交失败: ${error instanceof Error ? error.message : '未知错误'}`);
       setTimeout(() => setSubmitStatus('idle'), 5000);

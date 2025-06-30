@@ -13,7 +13,7 @@ export interface UserInfo {
   phone: string;
   wechat: string;
   points: number;
-  workPage?: string; // 工作页面名称，用于重定向逻辑
+  redirectRoute?: string; // 重定向路由，用于重定向逻辑
   avatar?: string;
   avatar_url?: string;
   created_at?: string;
@@ -324,7 +324,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         phone: userData.联系电话 || '',
         wechat: userData.微信号 || '',
         points: 0,
-        workPage: userData.工作页面 // 保留工作页面信息用于重定向
+        redirectRoute: userData.重定向路由 // 保留重定向路由信息用于重定向
       };
 
       // 更新状态

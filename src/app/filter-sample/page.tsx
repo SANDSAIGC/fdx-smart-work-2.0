@@ -31,11 +31,14 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Footer } from "@/components/ui/footer";
+import { SampleDataService } from "@/lib/supabase";
 
 // 表单数据接口
 interface FilterSampleFormData {
   startTime: string;
+  startTimeHour: string;
   endTime: string;
+  endTimeHour: string;
   moisture: string;
   pbGrade: string;
   znGrade: string;
@@ -58,7 +61,9 @@ interface GradeCalculatorData {
 // 初始表单数据
 const initialFormData: FilterSampleFormData = {
   startTime: "",
+  startTimeHour: "08:00",
   endTime: "",
+  endTimeHour: "16:00",
   moisture: "",
   pbGrade: "",
   znGrade: "",
@@ -175,7 +180,12 @@ export default function FilterSamplePage() {
     if (!formData.startTime || !formData.endTime) {
       return "请选择开始时间和结束时间";
     }
-    if (new Date(formData.startTime) >= new Date(formData.endTime)) {
+
+    // 合并日期和时间进行比较
+    const startDateTime = new Date(`${formData.startTime}T${formData.startTimeHour}`);
+    const endDateTime = new Date(`${formData.endTime}T${formData.endTimeHour}`);
+
+    if (startDateTime >= endDateTime) {
       return "结束时间必须晚于开始时间";
     }
     if (!formData.moisture || !formData.pbGrade || !formData.znGrade) {
@@ -198,16 +208,40 @@ export default function FilterSamplePage() {
     setSubmitStatus('idle');
 
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSubmitStatus('success');
-      setSubmitMessage('压滤样数据提交成功！');
-      setFormData(initialFormData);
+      // 准备提交数据，映射到数据库字段
+      // 合并日期和时间为完整的datetime格式
+      const startDateTime = new Date(`${formData.startTime}T${formData.startTimeHour}`).toISOString();
+      const endDateTime = new Date(`${formData.endTime}T${formData.endTimeHour}`).toISOString();
+
+      const submitData = {
+        开始时间: startDateTime,
+        结束时间: endDateTime,
+        水份: formData.moisture,
+        铅品位: formData.pbGrade,
+        锌品位: formData.znGrade,
+        备注: formData.remarks
+      };
+
+      console.log('🔬 [压滤样页面] 准备提交数据:', submitData);
+
+      // 调用数据服务提交数据
+      const result = await SampleDataService.submitFilterSample(submitData);
+
+      if (result.success) {
+        setSubmitStatus('success');
+        setSubmitMessage(result.message);
+        setFormData(initialFormData);
+        console.log('✅ [压滤样页面] 提交成功:', result);
+      } else {
+        setSubmitStatus('error');
+        setSubmitMessage(result.message);
+        console.error('❌ [压滤样页面] 提交失败:', result);
+      }
+
       setTimeout(() => setSubmitStatus('idle'), 3000);
 
     } catch (error) {
-      console.error('提交失败:', error);
+      console.error('❌ [压滤样页面] 提交异常:', error);
       setSubmitStatus('error');
       setSubmitMessage(`提交失败: ${error instanceof Error ? error.message : '未知错误'}`);
       setTimeout(() => setSubmitStatus('idle'), 5000);
@@ -258,23 +292,43 @@ export default function FilterSamplePage() {
               {/* 开始时间选择 */}
               <div className="space-y-2">
                 <Label htmlFor="startTime">开始时间</Label>
-                <Input
-                  id="startTime"
-                  type="date"
-                  value={formData.startTime}
-                  onChange={(e) => updateFormField('startTime', e.target.value)}
-                />
+                <div className="flex space-x-2">
+                  <Input
+                    id="startTime"
+                    type="date"
+                    value={formData.startTime}
+                    onChange={(e) => updateFormField('startTime', e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    id="startTimeHour"
+                    type="time"
+                    value={formData.startTimeHour}
+                    onChange={(e) => updateFormField('startTimeHour', e.target.value)}
+                    className="w-32"
+                  />
+                </div>
               </div>
 
               {/* 结束时间选择 */}
               <div className="space-y-2">
                 <Label htmlFor="endTime">结束时间</Label>
-                <Input
-                  id="endTime"
-                  type="date"
-                  value={formData.endTime}
-                  onChange={(e) => updateFormField('endTime', e.target.value)}
-                />
+                <div className="flex space-x-2">
+                  <Input
+                    id="endTime"
+                    type="date"
+                    value={formData.endTime}
+                    onChange={(e) => updateFormField('endTime', e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    id="endTimeHour"
+                    type="time"
+                    value={formData.endTimeHour}
+                    onChange={(e) => updateFormField('endTimeHour', e.target.value)}
+                    className="w-32"
+                  />
+                </div>
               </div>
             </div>
 

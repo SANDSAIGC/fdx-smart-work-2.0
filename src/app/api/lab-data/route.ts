@@ -1,70 +1,189 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
-// 模拟数据生成器
-function generateMockData(sampleType: string, count: number = 20) {
-  const elements = ['Cu', 'Fe', 'Au', 'Ag', 'Zn', 'Pb'];
-  const shifts = ['早班', '中班', '晚班'];
-  const mineralTypes = ['铜矿', '铁矿', '金矿', '银矿'];
-  const suppliers = ['供应商A', '供应商B', '供应商C', '供应商D'];
-  const purchasingUnits = ['采购单位A', '采购单位B', '采购单位C'];
+// 数据表映射配置
+const TABLE_MAPPING = {
+  'shift_samples': '生产日报-FDX',      // 班样 -> 生产日报-FDX
+  'filter_samples': '压滤样化验记录',    // 压滤样 -> 压滤样化验记录
+  'incoming_samples': '进厂原矿-FDX',   // 进厂样 -> 进厂原矿-FDX
+  'outgoing_sample': '出厂精矿-FDX'     // 出厂样 -> 出厂精矿-FDX
+} as const;
 
-  return Array.from({ length: count }, (_, index) => {
-    const baseData = {
-      id: `${sampleType}-${index + 1}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+// 数据转换函数
+function transformShiftSampleData(data: any[]) {
+  return data.flatMap(item => {
+    const baseItem = {
+      id: item.id.toString(),
+      日期: item.日期,
+      班次: item.班次,
+      created_at: item.created_at,
+      updated_at: item.updated_at
     };
 
-    // 生成随机日期（最近30天内）
-    const randomDate = new Date();
-    randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 30));
-    const dateStr = randomDate.toISOString().split('T')[0];
+    const results = [];
 
-    switch (sampleType) {
-      case 'shift_samples':
-        return {
-          ...baseData,
-          日期: dateStr,
-          班次: shifts[Math.floor(Math.random() * shifts.length)],
-          矿物类型: mineralTypes[Math.floor(Math.random() * mineralTypes.length)],
-          元素: elements[Math.floor(Math.random() * elements.length)],
-          品位: (Math.random() * 50 + 10).toFixed(2),
-          水分: (Math.random() * 15 + 5).toFixed(2),
-        };
-
-      case 'filter_samples':
-        return {
-          ...baseData,
-          日期: dateStr,
-          元素: elements[Math.floor(Math.random() * elements.length)],
-          品位: (Math.random() * 60 + 15).toFixed(2),
-          水分: (Math.random() * 12 + 3).toFixed(2),
-          压滤机编号: `PF-${Math.floor(Math.random() * 10) + 1}`,
-        };
-
-      case 'incoming_samples':
-        return {
-          ...baseData,
-          日期: dateStr,
-          元素: elements[Math.floor(Math.random() * elements.length)],
-          品位: (Math.random() * 40 + 5).toFixed(2),
-          水分: (Math.random() * 20 + 8).toFixed(2),
-          供应商: suppliers[Math.floor(Math.random() * suppliers.length)],
-        };
-
-      case 'outgoing_sample':
-        return {
-          ...baseData,
-          出厂日期: dateStr,
-          采购单位: purchasingUnits[Math.floor(Math.random() * purchasingUnits.length)],
-          化验元素: elements[Math.floor(Math.random() * elements.length)],
-          出厂样品位: (Math.random() * 70 + 20).toFixed(2),
-          出厂样水分: (Math.random() * 8 + 2).toFixed(2),
-        };
-
-      default:
-        return baseData;
+    // 添加锌元素数据
+    if (item['氧化锌原矿-Zn全品位（%）'] !== null || item['氧化锌精矿-Zn品位（%）'] !== null) {
+      results.push({
+        ...baseItem,
+        id: `${item.id}-zn`,
+        元素: 'Zn',
+        品位: item['氧化锌原矿-Zn全品位（%）'] || item['氧化锌精矿-Zn品位（%）'] || 0,
+        水分: item['氧化锌原矿-水份（%）'] || 0,
+        矿物类型: item['氧化锌原矿-Zn全品位（%）'] ? '氧化锌原矿' : '氧化锌精矿'
+      });
     }
+
+    // 添加铅元素数据
+    if (item['氧化锌原矿-Pb全品位（%）'] !== null || item['氧化锌精矿-Pb品位（%）'] !== null) {
+      results.push({
+        ...baseItem,
+        id: `${item.id}-pb`,
+        元素: 'Pb',
+        品位: item['氧化锌原矿-Pb全品位（%）'] || item['氧化锌精矿-Pb品位（%）'] || 0,
+        水分: item['氧化锌原矿-水份（%）'] || 0,
+        矿物类型: item['氧化锌原矿-Pb全品位（%）'] ? '氧化锌原矿' : '氧化锌精矿'
+      });
+    }
+
+    return results.length > 0 ? results : [{
+      ...baseItem,
+      元素: 'Zn',
+      品位: 0,
+      水分: 0,
+      矿物类型: '氧化锌原矿'
+    }];
+  });
+}
+
+function transformFilterSampleData(data: any[]) {
+  return data.flatMap(item => {
+    const baseItem = {
+      id: item.id.toString(),
+      日期: item.开始时间 ? new Date(item.开始时间).toISOString().split('T')[0] : null,
+      操作员: item.操作员,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    };
+
+    const results = [];
+
+    // 添加锌元素数据
+    if (item.锌品位 !== null) {
+      results.push({
+        ...baseItem,
+        id: `${item.id}-zn`,
+        元素: 'Zn',
+        品位: item.锌品位 || 0,
+        水分: item.水份 || 0
+      });
+    }
+
+    // 添加铅元素数据
+    if (item.铅品位 !== null) {
+      results.push({
+        ...baseItem,
+        id: `${item.id}-pb`,
+        元素: 'Pb',
+        品位: item.铅品位 || 0,
+        水分: item.水份 || 0
+      });
+    }
+
+    return results.length > 0 ? results : [{
+      ...baseItem,
+      元素: 'Zn',
+      品位: 0,
+      水分: 0
+    }];
+  });
+}
+
+function transformIncomingSampleData(data: any[]) {
+  return data.flatMap(item => {
+    const baseItem = {
+      id: item.id.toString(),
+      日期: item.计量日期,
+      供应商: item.发货单位名称,
+      原矿类型: item.原矿类型,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    };
+
+    const results = [];
+
+    // 添加锌元素数据
+    if (item.Zn !== null) {
+      results.push({
+        ...baseItem,
+        id: `${item.id}-zn`,
+        元素: 'Zn',
+        品位: item.Zn || 0,
+        水分: item['水份(%)'] || 0
+      });
+    }
+
+    // 添加铅元素数据
+    if (item.Pb !== null) {
+      results.push({
+        ...baseItem,
+        id: `${item.id}-pb`,
+        元素: 'Pb',
+        品位: item.Pb || 0,
+        水分: item['水份(%)'] || 0
+      });
+    }
+
+    return results.length > 0 ? results : [{
+      ...baseItem,
+      元素: 'Zn',
+      品位: 0,
+      水分: 0
+    }];
+  });
+}
+
+function transformOutgoingSampleData(data: any[]) {
+  return data.flatMap(item => {
+    const baseItem = {
+      id: item.id.toString(),
+      出厂日期: item.计量日期,
+      采购单位: item.收货单位名称,
+      样品编号: item.样品编号,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    };
+
+    const results = [];
+
+    // 添加锌元素数据
+    if (item.Zn !== null) {
+      results.push({
+        ...baseItem,
+        id: `${item.id}-zn`,
+        元素: 'Zn',
+        出厂样品位: item.Zn || 0,
+        出厂样水分: item['水份(%)'] || 0
+      });
+    }
+
+    // 添加铅元素数据
+    if (item.Pb !== null) {
+      results.push({
+        ...baseItem,
+        id: `${item.id}-pb`,
+        元素: 'Pb',
+        出厂样品位: item.Pb || 0,
+        出厂样水分: item['水份(%)'] || 0
+      });
+    }
+
+    return results.length > 0 ? results : [{
+      ...baseItem,
+      元素: 'Zn',
+      出厂样品位: 0,
+      出厂样水分: 0
+    }];
   });
 }
 
@@ -74,7 +193,7 @@ export async function GET(request: NextRequest) {
     const sampleType = searchParams.get('sampleType') || 'shift_samples';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '50');
 
     console.log('Lab API 请求参数:', {
       sampleType,
@@ -83,23 +202,75 @@ export async function GET(request: NextRequest) {
       limit
     });
 
-    // 生成模拟数据
-    const mockData = generateMockData(sampleType, limit);
+    // 获取对应的数据表名
+    const tableName = TABLE_MAPPING[sampleType as keyof typeof TABLE_MAPPING];
+    if (!tableName) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid sample type',
+        message: `不支持的样品类型: ${sampleType}`
+      }, { status: 400 });
+    }
 
-    // 如果提供了日期范围，过滤数据
-    let filteredData = mockData;
+    // 构建查询
+    let query = supabase.from(tableName).select('*');
+
+    // 添加日期范围筛选
     if (startDate && endDate) {
-      filteredData = mockData.filter(item => {
-        const itemDate = item.日期 || item.出厂日期;
-        return itemDate >= startDate && itemDate <= endDate;
-      });
+      switch (sampleType) {
+        case 'shift_samples':
+          query = query.gte('日期', startDate).lte('日期', endDate);
+          break;
+        case 'filter_samples':
+          query = query.gte('开始时间', startDate).lte('开始时间', endDate);
+          break;
+        case 'incoming_samples':
+          query = query.gte('计量日期', startDate).lte('计量日期', endDate);
+          break;
+        case 'outgoing_sample':
+          query = query.gte('计量日期', startDate).lte('计量日期', endDate);
+          break;
+      }
+    }
+
+    // 添加排序和限制
+    query = query.order('created_at', { ascending: false }).limit(limit);
+
+    // 执行查询
+    const { data: rawData, error } = await query;
+
+    if (error) {
+      console.error('Supabase 查询错误:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Database query failed',
+        message: error.message
+      }, { status: 500 });
+    }
+
+    // 转换数据格式
+    let transformedData: any[] = [];
+    switch (sampleType) {
+      case 'shift_samples':
+        transformedData = transformShiftSampleData(rawData || []);
+        break;
+      case 'filter_samples':
+        transformedData = transformFilterSampleData(rawData || []);
+        break;
+      case 'incoming_samples':
+        transformedData = transformIncomingSampleData(rawData || []);
+        break;
+      case 'outgoing_sample':
+        transformedData = transformOutgoingSampleData(rawData || []);
+        break;
     }
 
     return NextResponse.json({
       success: true,
-      data: filteredData,
-      total: filteredData.length,
+      data: transformedData,
+      total: transformedData.length,
       sampleType,
+      tableName,
       dateRange: { startDate, endDate }
     });
 

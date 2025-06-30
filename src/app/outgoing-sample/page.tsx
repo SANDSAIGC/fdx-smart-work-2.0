@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Footer } from "@/components/ui/footer";
+import { SampleDataService } from "@/lib/supabase";
 
 // 表单数据接口
 interface OutgoingSampleFormData {
@@ -201,16 +202,36 @@ export default function OutgoingSamplePage() {
     setSubmitStatus('idle');
 
     try {
-      // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSubmitStatus('success');
-      setSubmitMessage('出厂样数据提交成功！');
-      setFormData(initialFormData);
+      // 准备提交数据，映射到数据库字段
+      const submitData = {
+        计量日期: formData.date,
+        收货单位名称: formData.receivingUnit,
+        样品编号: formData.sampleNumber,
+        '水份(%)': formData.moisture,
+        Pb: formData.pbGrade,
+        Zn: formData.znGrade
+      };
+
+      console.log('🔬 [出厂样页面] 准备提交数据:', submitData);
+
+      // 调用数据服务提交数据
+      const result = await SampleDataService.submitOutgoingSample(submitData);
+
+      if (result.success) {
+        setSubmitStatus('success');
+        setSubmitMessage(result.message);
+        setFormData(initialFormData);
+        console.log('✅ [出厂样页面] 提交成功:', result);
+      } else {
+        setSubmitStatus('error');
+        setSubmitMessage(result.message);
+        console.error('❌ [出厂样页面] 提交失败:', result);
+      }
+
       setTimeout(() => setSubmitStatus('idle'), 3000);
 
     } catch (error) {
-      console.error('提交失败:', error);
+      console.error('❌ [出厂样页面] 提交异常:', error);
       setSubmitStatus('error');
       setSubmitMessage(`提交失败: ${error instanceof Error ? error.message : '未知错误'}`);
       setTimeout(() => setSubmitStatus('idle'), 5000);

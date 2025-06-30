@@ -29,7 +29,7 @@ interface LoginResponse {
     账号: string;
     姓名: string;
     部门: string;
-    工作页面: string;
+    重定向路由: string;
     职称: string;
   };
 }
@@ -108,9 +108,10 @@ export function LoginForm({
         await login(result.user, rememberMe);
         console.log('✅ [登录] 用户登录状态已保存，记住我:', rememberMe);
 
-        // 登录成功后重定向到根页面，让根页面处理智能重定向
-        console.log('🔄 [登录] 重定向到根页面，由根页面处理智能重定向');
-        router.push('/');
+        // 直接重定向到用户的工作页面，避免闪现问题
+        const redirectRoute = result.user.重定向路由 || '/lab';
+        console.log('🎯 [登录] 直接重定向到工作页面:', redirectRoute);
+        router.replace(redirectRoute);
       }
 
     } catch (error: unknown) {

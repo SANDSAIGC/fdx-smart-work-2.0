@@ -13,7 +13,7 @@ export interface LoginResponse {
     账号: string;
     姓名: string;
     部门: string;
-    工作页面: string;
+    重定向路由: string;
     职称: string;
   };
 }
@@ -45,19 +45,43 @@ export async function POST(request: NextRequest) {
     // 构建查询URL - 查询用户资料表进行身份验证
     const queryUrl = `${supabaseUrl}/rest/v1/用户资料?select=*&账号=eq.${encodeURIComponent(email)}&密码=eq.${encodeURIComponent(password)}&limit=1`;
 
-    // 发送HTTP请求到Supabase
-    const response = await fetch(queryUrl, {
-      method: 'GET',
-      headers: {
-        'apikey': anonKey,
-        'Authorization': `Bearer ${anonKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
-      }
-    });
+    // 发送HTTP请求到Supabase，增加重试机制
+    let response;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    if (!response.ok) {
-      console.error('❌ [登录API] Supabase请求失败:', response.status, response.statusText);
+    while (retryCount < maxRetries) {
+      try {
+        response = await fetch(queryUrl, {
+          method: 'GET',
+          headers: {
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          // 添加超时设置
+          signal: AbortSignal.timeout(10000) // 10秒超时
+        });
+
+        if (response.ok) {
+          break; // 成功，跳出重试循环
+        }
+      } catch (error) {
+        console.log(`❌ [登录API] 第${retryCount + 1}次尝试失败:`, error);
+        retryCount++;
+
+        if (retryCount >= maxRetries) {
+          throw error; // 达到最大重试次数，抛出错误
+        }
+
+        // 等待一段时间后重试
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
+
+    if (!response || !response.ok) {
+      console.error('❌ [登录API] Supabase请求失败:', response?.status, response?.statusText);
       return NextResponse.json({
         success: false,
         message: '登录验证失败，请重试'
@@ -79,7 +103,7 @@ export async function POST(request: NextRequest) {
       账号: user.账号,
       姓名: user.姓名,
       部门: user.部门,
-      工作页面: user.工作页面,
+      重定向路由: user.重定向路由,
       职称: user.职称
     });
 
@@ -89,7 +113,7 @@ export async function POST(request: NextRequest) {
       账号: user.账号,
       姓名: user.姓名,
       部门: user.部门,
-      工作页面: user.工作页面 || 'lab',
+      重定向路由: user.重定向路由 || '/lab',
       职称: user.职称 || '化验师'
     };
 
