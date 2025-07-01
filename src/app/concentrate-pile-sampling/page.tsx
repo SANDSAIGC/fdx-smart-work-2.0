@@ -115,7 +115,7 @@ export default function ConcentratePileSamplingPage() {
     try {
       // 准备提交数据，映射到数据库字段
       const submitData = {
-        日期: formData.date,
+        取样日期: formData.date, // 修正字段名称：从"日期"改为"取样日期"
         "Pb品位%": formData.pbGrade,
         "Zn品位%": formData.znGrade,
         "水份%": formData.moisture,

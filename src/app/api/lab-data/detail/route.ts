@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // 数据表映射
 const TABLE_MAPPING = {
-  'shift_samples': '生产日报-FDX',
+  'shift_samples': '生产班报-FDX',
   'filter_samples': '压滤样化验记录',
   'incoming_samples': '进厂原矿-FDX',
   'outgoing_sample': '出厂精矿-FDX'

@@ -214,7 +214,7 @@ async function getCurrentUserHeaders(): Promise<Record<string, string>> {
 
 // 样品数据服务类
 export class SampleDataService {
-  // 提交班样数据到生产日报-FDX表
+  // 提交班样数据到生产班报-FDX表
   static async submitShiftSample(data: ShiftSampleData): Promise<{ success: boolean; message: string; data?: any }> {
     try {
       const headers = await getCurrentUserHeaders();

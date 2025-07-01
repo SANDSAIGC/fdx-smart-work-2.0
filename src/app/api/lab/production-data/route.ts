@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建查询URL
-    const queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产日报对比')}?select=*&日期=gte.${startDate}&日期=lte.${endDate}&order=日期.asc`;
+    const queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产班报-FDX')}?select=*&日期=gte.${startDate}&日期=lte.${endDate}&order=日期.asc`;
 
     // 发送HTTP请求到Supabase
     const response = await fetch(queryUrl, {

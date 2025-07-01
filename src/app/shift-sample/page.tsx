@@ -280,7 +280,7 @@ export default function ShiftSamplePage() {
               <span>生产日报数据填报</span>
             </CardTitle>
             <CardDescription>
-              请填写班样记录数据，数据将同步到生产日报-FDX数据表
+              请填写班样记录数据，数据将同步到生产班报-FDX数据表
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

@@ -54,10 +54,7 @@ export async function POST(request: NextRequest) {
     const requestData = await request.json();
     console.log('🔬 [班样API] 收到数据:', requestData);
 
-    // 获取当前用户信息
-    const currentUser = await getCurrentUser(request);
-    const 化验人员 = currentUser?.name || '系统用户';
-    console.log('👤 [班样API] 化验人员:', 化验人员);
+    // 注意：生产班报-FDX表中没有化验人员字段，所以不需要获取当前用户信息
 
     // 数据字段映射和验证
     const {
@@ -81,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查是否已存在相同日期和班次的记录
-    const checkUrl = `${supabaseUrl}/rest/v1/生产日报-FDX?日期=eq.${日期}&班次=eq.${encodeURIComponent(班次)}`;
+    const checkUrl = `${supabaseUrl}/rest/v1/生产班报-FDX?日期=eq.${日期}&班次=eq.${encodeURIComponent(班次)}`;
     const checkResponse = await fetch(checkUrl, {
       headers: {
         'apikey': anonKey,
@@ -101,7 +98,7 @@ export async function POST(request: NextRequest) {
     const submitData = {
       日期,
       班次,
-      化验人员, // 自动添加当前用户作为化验人员
+      // 注意：生产班报-FDX表中没有化验人员字段，所以不添加化验人员信息
       '氧化锌原矿-水份（%）': originalMoisture ? parseFloat(originalMoisture) : null,
       '氧化锌原矿-Pb全品位（%）': originalPbGrade ? parseFloat(originalPbGrade) : null,
       '氧化锌原矿-Zn全品位（%）': originalZnGrade ? parseFloat(originalZnGrade) : null,
@@ -119,7 +116,7 @@ export async function POST(request: NextRequest) {
       // 更新现有记录
       operation = 'UPDATE';
       const recordId = existingRecords[0].id;
-      response = await fetch(`${supabaseUrl}/rest/v1/生产日报-FDX?id=eq.${recordId}`, {
+      response = await fetch(`${supabaseUrl}/rest/v1/生产班报-FDX?id=eq.${recordId}`, {
         method: 'PATCH',
         headers: {
           'apikey': anonKey,
@@ -132,7 +129,7 @@ export async function POST(request: NextRequest) {
     } else {
       // 创建新记录
       operation = 'INSERT';
-      response = await fetch(`${supabaseUrl}/rest/v1/生产日报-FDX`, {
+      response = await fetch(`${supabaseUrl}/rest/v1/生产班报-FDX`, {
         method: 'POST',
         headers: {
           'apikey': anonKey,

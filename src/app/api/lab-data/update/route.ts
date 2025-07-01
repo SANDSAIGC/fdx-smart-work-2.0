@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // 数据表映射
 const TABLE_MAPPING = {
-  'shift_samples': '生产日报-FDX',
+  'shift_samples': '生产班报-FDX',
   'filter_samples': '压滤样化验记录',
   'incoming_samples': '进厂原矿-FDX',
   'outgoing_sample': '出厂精矿-FDX'
@@ -85,19 +85,26 @@ export async function PUT(request: NextRequest) {
     const 化验人员 = currentUser?.name || '系统用户';
     console.log('👤 [Lab更新API] 化验人员:', 化验人员);
 
-    // 准备更新数据，添加更新时间和化验人员
+    // 准备更新数据，添加更新时间
     let updateData = {
       ...data,
-      化验人员, // 自动添加当前用户作为化验人员
       updated_at: new Date().toISOString()
     };
+
+    // 只在有化验人员字段的表中添加化验人员信息
+    // 注意：生产班报-FDX表中没有化验人员字段，所以班样数据不添加化验人员
+    if (sampleType === 'incoming_samples' || sampleType === 'outgoing_sample' || sampleType === 'filter_samples') {
+      updateData.化验人员 = 化验人员;
+    }
 
     // 移除不应该更新的字段
     delete updateData.id;
     delete updateData.created_at;
 
-    // 处理虚拟字段到实际数据库字段的映射
-    if (sampleType === 'shift_samples') {
+    // 处理虚拟字段到实际数据库字段的映射（仅当存在虚拟字段时）
+    const hasVirtualFields = updateData['元素'] || updateData['品位'] || updateData['水分'] || updateData['矿物类型'];
+
+    if (hasVirtualFields && sampleType === 'shift_samples') {
       // 班样数据：需要将虚拟字段映射回实际数据库字段
       const 元素 = updateData['元素'];
       const 品位 = updateData['品位'];
@@ -120,13 +127,7 @@ export async function PUT(request: NextRequest) {
           updateData['氧化锌精矿-Pb品位（%）'] = 品位;
         }
       }
-
-      // 移除虚拟字段
-      delete updateData['元素'];
-      delete updateData['品位'];
-      delete updateData['水分'];
-      delete updateData['矿物类型'];
-    } else if (sampleType === 'filter_samples') {
+    } else if (hasVirtualFields && sampleType === 'filter_samples') {
       // 压滤样数据：映射虚拟字段
       const 元素 = updateData['元素'];
       const 品位 = updateData['品位'];
@@ -139,20 +140,43 @@ export async function PUT(request: NextRequest) {
         updateData['铅品位'] = 品位;
         updateData['水份'] = 水分;
       }
+    } else if (hasVirtualFields && sampleType === 'incoming_samples') {
+      // 进厂样数据：映射虚拟字段到实际数据库字段
+      const 元素 = updateData['元素'];
+      const 品位 = updateData['品位'];
+      const 水分 = updateData['水分'];
 
-      // 移除虚拟字段
-      delete updateData['元素'];
-      delete updateData['品位'];
-      delete updateData['水分'];
-    } else {
-      // 其他数据类型：移除所有虚拟字段
-      delete updateData['元素'];
-      delete updateData['品位'];
-      delete updateData['水分'];
-      delete updateData['矿物类型'];
+      console.log('🔄 [Lab更新API] 进厂样虚拟字段映射:', { 元素, 品位, 水分 });
+
+      if (元素 === 'Zn') {
+        updateData['Zn'] = 品位;
+        updateData['水份(%)'] = 水分;
+      } else if (元素 === 'Pb') {
+        updateData['Pb'] = 品位;
+        updateData['水份(%)'] = 水分;
+      }
+    } else if (hasVirtualFields && sampleType === 'outgoing_sample') {
+      // 出厂样数据：映射虚拟字段到实际数据库字段
+      const 元素 = updateData['元素'];
+      const 品位 = updateData['品位'];
+      const 水分 = updateData['水分'];
+
+      console.log('🔄 [Lab更新API] 出厂样虚拟字段映射:', { 元素, 品位, 水分 });
+
+      if (元素 === 'Zn') {
+        updateData['Zn'] = 品位;
+        updateData['水份(%)'] = 水分;
+      } else if (元素 === 'Pb') {
+        updateData['Pb'] = 品位;
+        updateData['水份(%)'] = 水分;
+      }
     }
 
-    // 移除其他前端显示用的虚拟字段
+    // 移除虚拟字段（如果存在）
+    delete updateData['元素'];
+    delete updateData['品位'];
+    delete updateData['水分'];
+    delete updateData['矿物类型'];
     delete updateData['湿重'];
     delete updateData['干重'];
     delete updateData['氧化率'];
@@ -170,6 +194,9 @@ export async function PUT(request: NextRequest) {
     delete updateData['作业率'];
     delete updateData['设备状态'];
     delete updateData['备注'];
+
+    // 移除不存在的字段（防止用户手动添加不存在的字段）
+    delete updateData['操作员']; // 压滤样表中不存在此字段，应使用'化验人员'
 
     console.log('准备更新的数据:', updateData);
 

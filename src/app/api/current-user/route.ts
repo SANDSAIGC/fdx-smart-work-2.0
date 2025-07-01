@@ -23,15 +23,18 @@ export async function GET(request: NextRequest) {
       const authHeader = request.headers.get('authorization');
       if (authHeader && authHeader.startsWith('Bearer ')) {
         // 这里可以解析JWT token获取用户ID
-        // 暂时使用默认用户ID
-        userId = "4dd00d94-1c91-4dc9-990d-1abcfd52dcee"; // 默认用户：陈鴅
+        // TODO: 实现JWT token解析逻辑
+        console.log('⚠️ [当前用户API] 需要实现JWT token解析逻辑');
       }
     }
 
-    // 如果仍然没有用户ID，使用默认用户
+    // 如果仍然没有用户ID，返回错误
     if (!userId) {
-      userId = "4dd00d94-1c91-4dc9-990d-1abcfd52dcee"; // 默认用户：陈鴅
-      console.log('⚠️ [当前用户API] 未提供用户ID，使用默认用户:', userId);
+      console.error('❌ [当前用户API] 未提供有效的用户ID或认证信息');
+      return NextResponse.json({
+        success: false,
+        error: 'User ID or valid authentication is required'
+      }, { status: 401 });
     }
 
     // 构建查询URL
@@ -123,8 +126,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 使用提供的用户ID或默认用户ID
-    const targetUserId = userId || "4dd00d94-1c91-4dc9-990d-1abcfd52dcee";
+    // 必须提供有效的用户ID
+    if (!userId) {
+      console.error('❌ [当前用户API] POST请求必须提供用户ID');
+      return NextResponse.json({
+        success: false,
+        error: 'User ID is required for session-based authentication'
+      }, { status: 400 });
+    }
+
+    const targetUserId = userId;
 
     // 构建查询URL
     const queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('用户资料')}?select=id,账号,姓名,职称,部门,联系电话,微信号,avatar_url,created_at,updated_at&id=eq.${targetUserId}`;

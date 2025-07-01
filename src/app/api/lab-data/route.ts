@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 // 数据表映射配置
 const TABLE_MAPPING = {
-  'shift_samples': '生产日报-FDX',      // 班样 -> 生产日报-FDX
+  'shift_samples': '生产班报-FDX',      // 班样 -> 生产班报-FDX
   'filter_samples': '压滤样化验记录',    // 压滤样 -> 压滤样化验记录
   'incoming_samples': '进厂原矿-FDX',   // 进厂样 -> 进厂原矿-FDX
   'outgoing_sample': '出厂精矿-FDX'     // 出厂样 -> 出厂精矿-FDX
@@ -233,8 +233,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 添加排序和限制
-    query = query.order('created_at', { ascending: false }).limit(limit);
+    // 添加排序和限制 - 按日期字段倒序排列
+    let orderField = 'created_at';
+    switch (sampleType) {
+      case 'shift_samples':
+        orderField = '日期';
+        break;
+      case 'filter_samples':
+        orderField = '开始时间';
+        break;
+      case 'incoming_samples':
+        orderField = '计量日期';
+        break;
+      case 'outgoing_sample':
+        orderField = '计量日期';
+        break;
+    }
+
+    query = query.order(orderField, { ascending: false }).limit(limit);
 
     // 执行查询
     const { data: rawData, error } = await query;

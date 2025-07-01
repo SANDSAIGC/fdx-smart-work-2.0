@@ -41,7 +41,7 @@ async function getCurrentUser(request: NextRequest): Promise<{ name: string } | 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('📥 [精矿堆摸底样API] 收到请求数据:', body);
+    console.log('📥 [精矿堆摸底样API] 收到请求数据 v2.0:', body);
 
     // 获取环境变量
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -71,7 +71,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查是否已存在相同日期的记录
-    const checkUrl = `${supabaseUrl}/rest/v1/精矿堆摸底样?取样日期=eq.${取样日期}`;
+    const tableName = encodeURIComponent('精矿堆摸底样');
+    const fieldName = encodeURIComponent('日期'); // 使用数据表中的实际字段名
+    const checkUrl = `${supabaseUrl}/rest/v1/${tableName}?${fieldName}=eq.${encodeURIComponent(取样日期)}`;
+    console.log('🔍 [精矿堆摸底样API] 查询URL v3.0:', checkUrl);
+    console.log('🔍 [精矿堆摸底样API] 表名编码:', tableName);
+    console.log('🔍 [精矿堆摸底样API] 字段名编码 v3.0:', fieldName);
+    console.log('🔍 [精矿堆摸底样API] 原始字段名: 日期');
+
     const checkResponse = await fetch(checkUrl, {
       headers: {
         'apikey': anonKey,
@@ -87,9 +94,15 @@ export async function POST(request: NextRequest) {
     const existingRecords = await checkResponse.json();
     console.log('🔍 [精矿堆摸底样API] 查询现有记录:', existingRecords);
 
-    // 准备要提交的数据
+    // 准备要提交的数据，进行字段映射
     const submitData = {
-      ...body,
+      日期: body.取样日期, // 字段映射：取样日期 -> 日期
+      'Pb品位%': body['Pb品位%'],
+      'Zn品位%': body['Zn品位%'],
+      '水份%': body['水份%'],
+      '湿重预估t': body['湿重预估t'],
+      '干重预估t': body['干重预估t'],
+      '金属量预估t': body['金属量预估t'],
       化验人员, // 自动添加当前用户作为化验人员
       updated_at: new Date().toISOString()
     };
@@ -101,7 +114,7 @@ export async function POST(request: NextRequest) {
       // 更新现有记录
       operation = 'UPDATE';
       const recordId = existingRecords[0].id;
-      response = await fetch(`${supabaseUrl}/rest/v1/精矿堆摸底样?id=eq.${recordId}`, {
+      response = await fetch(`${supabaseUrl}/rest/v1/${tableName}?id=eq.${recordId}`, {
         method: 'PATCH',
         headers: {
           'apikey': anonKey,
@@ -115,7 +128,7 @@ export async function POST(request: NextRequest) {
       // 创建新记录
       operation = 'INSERT';
       submitData.created_at = new Date().toISOString();
-      response = await fetch(`${supabaseUrl}/rest/v1/精矿堆摸底样`, {
+      response = await fetch(`${supabaseUrl}/rest/v1/${tableName}`, {
         method: 'POST',
         headers: {
           'apikey': anonKey,

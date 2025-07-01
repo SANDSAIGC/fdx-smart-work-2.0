@@ -8,7 +8,7 @@ const testCases = [
   {
     name: '班样数据测试',
     sampleType: 'shift_samples',
-    expectedTable: '生产日报-FDX'
+    expectedTable: '生产班报-FDX'
   },
   {
     name: '压滤样数据测试',

@@ -43,7 +43,10 @@ import {
   X,
   Undo2,
   Package,
-  Mountain
+  Mountain,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -134,37 +137,137 @@ const chartConfig = {
     label: "Pb回收率",
     color: "var(--chart-2)",
   },
-  // 生产数据字段（注意：jinding_moisture和fudingxiang_moisture已在上面定义，这里不重复定义）
-  jinding_zn_grade: {
-    label: "金鼎Zn品位",
-    color: "var(--chart-3)",
-  },
-  fudingxiang_zn_grade: {
-    label: "富鼎翔Zn品位",
-    color: "var(--chart-4)",
-  },
-  jinding_pb_grade: {
-    label: "金鼎Pb品位",
-    color: "var(--chart-5)",
-  },
-  fudingxiang_pb_grade: {
-    label: "富鼎翔Pb品位",
-    color: "var(--chart-6)",
-  },
-  jinding_zn_recovery: {
-    label: "金鼎Zn回收率",
+  // 生产数据字段 - 白班和夜班分别配置
+  // 原矿数据
+  jinding_day_moisture: {
+    label: "金鼎白班水份",
     color: "var(--chart-1)",
   },
-  fudingxiang_zn_recovery: {
-    label: "富鼎翔Zn回收率",
+  jinding_night_moisture: {
+    label: "金鼎夜班水份",
     color: "var(--chart-2)",
   },
-  jinding_pb_recovery: {
-    label: "金鼎Pb回收率",
+  fudingxiang_day_moisture: {
+    label: "富鼎翔白班水份",
     color: "var(--chart-3)",
   },
-  fudingxiang_pb_recovery: {
-    label: "富鼎翔Pb回收率",
+  fudingxiang_night_moisture: {
+    label: "富鼎翔夜班水份",
+    color: "var(--chart-4)",
+  },
+  jinding_day_zn_grade: {
+    label: "金鼎白班Zn品位",
+    color: "var(--chart-1)",
+  },
+  jinding_night_zn_grade: {
+    label: "金鼎夜班Zn品位",
+    color: "var(--chart-2)",
+  },
+  fudingxiang_day_zn_grade: {
+    label: "富鼎翔白班Zn品位",
+    color: "var(--chart-3)",
+  },
+  fudingxiang_night_zn_grade: {
+    label: "富鼎翔夜班Zn品位",
+    color: "var(--chart-4)",
+  },
+  jinding_day_pb_grade: {
+    label: "金鼎白班Pb品位",
+    color: "var(--chart-1)",
+  },
+  jinding_night_pb_grade: {
+    label: "金鼎夜班Pb品位",
+    color: "var(--chart-2)",
+  },
+  fudingxiang_day_pb_grade: {
+    label: "富鼎翔白班Pb品位",
+    color: "var(--chart-3)",
+  },
+  fudingxiang_night_pb_grade: {
+    label: "富鼎翔夜班Pb品位",
+    color: "var(--chart-4)",
+  },
+  // 精矿数据
+  jinding_day_concentrate_zn: {
+    label: "金鼎白班精矿Zn",
+    color: "var(--chart-1)",
+  },
+  jinding_night_concentrate_zn: {
+    label: "金鼎夜班精矿Zn",
+    color: "var(--chart-2)",
+  },
+  fudingxiang_day_concentrate_zn: {
+    label: "富鼎翔白班精矿Zn",
+    color: "var(--chart-3)",
+  },
+  fudingxiang_night_concentrate_zn: {
+    label: "富鼎翔夜班精矿Zn",
+    color: "var(--chart-4)",
+  },
+  jinding_day_concentrate_pb: {
+    label: "金鼎白班精矿Pb",
+    color: "var(--chart-1)",
+  },
+  jinding_night_concentrate_pb: {
+    label: "金鼎夜班精矿Pb",
+    color: "var(--chart-2)",
+  },
+  fudingxiang_day_concentrate_pb: {
+    label: "富鼎翔白班精矿Pb",
+    color: "var(--chart-3)",
+  },
+  fudingxiang_night_concentrate_pb: {
+    label: "富鼎翔夜班精矿Pb",
+    color: "var(--chart-4)",
+  },
+  // 尾矿数据
+  jinding_day_tailings_zn: {
+    label: "金鼎白班尾矿Zn",
+    color: "var(--chart-1)",
+  },
+  jinding_night_tailings_zn: {
+    label: "金鼎夜班尾矿Zn",
+    color: "var(--chart-2)",
+  },
+  fudingxiang_day_tailings_zn: {
+    label: "富鼎翔白班尾矿Zn",
+    color: "var(--chart-3)",
+  },
+  fudingxiang_night_tailings_zn: {
+    label: "富鼎翔夜班尾矿Zn",
+    color: "var(--chart-4)",
+  },
+  jinding_day_tailings_pb: {
+    label: "金鼎白班尾矿Pb",
+    color: "var(--chart-1)",
+  },
+  jinding_night_tailings_pb: {
+    label: "金鼎夜班尾矿Pb",
+    color: "var(--chart-2)",
+  },
+  fudingxiang_day_tailings_pb: {
+    label: "富鼎翔白班尾矿Pb",
+    color: "var(--chart-3)",
+  },
+  fudingxiang_night_tailings_pb: {
+    label: "富鼎翔夜班尾矿Pb",
+    color: "var(--chart-4)",
+  },
+  // 回收率数据
+  jinding_day_zn_recovery: {
+    label: "金鼎白班Zn回收率",
+    color: "var(--chart-1)",
+  },
+  jinding_night_zn_recovery: {
+    label: "金鼎夜班Zn回收率",
+    color: "var(--chart-2)",
+  },
+  fudingxiang_day_zn_recovery: {
+    label: "富鼎翔白班Zn回收率",
+    color: "var(--chart-3)",
+  },
+  fudingxiang_night_zn_recovery: {
+    label: "富鼎翔夜班Zn回收率",
     color: "var(--chart-4)",
   },
   // 内部取样字段
@@ -297,6 +400,39 @@ function ThemeToggle() {
   );
 }
 
+// 可排序表头组件
+interface SortableTableHeadProps {
+  field: string;
+  children: React.ReactNode;
+  sortField: string;
+  sortDirection: 'asc' | 'desc';
+  onSort: (field: string) => void;
+}
+
+function SortableTableHead({ field, children, sortField, sortDirection, onSort }: SortableTableHeadProps) {
+  const isActive = sortField === field;
+
+  return (
+    <TableHead
+      className="cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {isActive ? (
+          sortDirection === 'asc' ? (
+            <ArrowUp className="h-4 w-4" />
+          ) : (
+            <ArrowDown className="h-4 w-4" />
+          )
+        ) : (
+          <ArrowUpDown className="h-4 w-4 opacity-50" />
+        )}
+      </div>
+    </TableHead>
+  );
+}
+
 // 图表组件
 function ComparisonChart({
   data,
@@ -373,6 +509,10 @@ function LabPageContent() {
   const [tableData, setTableData] = useState<SampleData[]>([]);
   const [selectedDataSource, setSelectedDataSource] = useState<DataSource>('shift_samples');
 
+  // 排序状态管理
+  const [sortField, setSortField] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
   // 详情对话框状态
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedRowData, setSelectedRowData] = useState<SampleData | null>(null);
@@ -385,6 +525,13 @@ function LabPageContent() {
 
   // 图表数据状态
   const [chartData, setChartData] = useState(() => generateMockData());
+
+  // 对比数据状态
+  const [comparisonData, setComparisonData] = useState<any>({
+    incoming: [],
+    outgoing: [],
+    production: []
+  });
 
   // 日期选择状态
   const [startDate, setStartDate] = useState<Date | undefined>(() => {
@@ -501,25 +648,289 @@ function LabPageContent() {
     }
   }, []);
 
+  // 获取JDXY数据
+  const fetchJDXYData = useCallback(async (startDate: Date, endDate: Date) => {
+    try {
+      const response = await fetch('/api/lab/jdxy-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.data || { incoming: [], outgoing: [], production: [] };
+    } catch (error) {
+      console.error('获取JDXY数据失败:', error);
+      return { incoming: [], outgoing: [], production: [] };
+    }
+  }, []);
+
+  // 获取FDX数据
+  const fetchFDXData = useCallback(async (startDate: Date, endDate: Date) => {
+    try {
+      const response = await fetch('/api/lab/fdx-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.data || { incoming: [], outgoing: [], production: [], internalSample: [] };
+    } catch (error) {
+      console.error('获取FDX数据失败:', error);
+      return { incoming: [], outgoing: [], production: [], internalSample: [] };
+    }
+  }, []);
+
+  // 获取对比数据
+  const fetchComparisonData = useCallback(async (startDate: Date, endDate: Date) => {
+    try {
+      const response = await fetch('/api/lab/comparison-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.data || { incoming: [], outgoing: [], production: [] };
+    } catch (error) {
+      console.error('获取对比数据失败:', error);
+      return { incoming: [], outgoing: [], production: [] };
+    }
+  }, []);
+
+  // 转换Supabase数据为图表数据格式 - 重新设计为分别从不同数据表获取数据
+  const transformSupabaseDataToChartData = useCallback((jindingData: any, fdxData: any) => {
+    // 获取所有日期
+    const allDates = new Set<string>();
+
+    // 从金鼎数据中获取日期
+    jindingData.incoming?.forEach((item: any) => allDates.add(item.计量日期));
+    jindingData.production?.forEach((item: any) => allDates.add(item.日期));
+    jindingData.outgoing?.forEach((item: any) => allDates.add(item.计量日期));
+
+    // 从富鼎翔数据中获取日期
+    fdxData.incoming?.forEach((item: any) => allDates.add(item.计量日期));
+    fdxData.production?.forEach((item: any) => allDates.add(item.日期));
+    fdxData.outgoing?.forEach((item: any) => allDates.add(item.计量日期));
+
+    const sortedDates = Array.from(allDates).sort();
+
+    // 转换进厂数据 - 分别从进厂原矿-JDXY和进厂原矿-FDX表获取数据
+    const incomingChartData = {
+      gradeAndMoisture: sortedDates.map(date => {
+        const jindingItem = jindingData.incoming?.find((item: any) => item.计量日期 === date);
+        const fudingxiangItem = fdxData.incoming?.find((item: any) => item.计量日期 === date);
+
+        return {
+          date,
+          jinding_grade: jindingItem ? Number(jindingItem.Zn || 0).toFixed(2) : '0.00',
+          fudingxiang_grade: fudingxiangItem ? Number(fudingxiangItem.Zn || 0).toFixed(2) : '0.00',
+          jinding_moisture: jindingItem ? Number(jindingItem['水份(%)'] || 0).toFixed(2) : '0.00',
+          fudingxiang_moisture: fudingxiangItem ? Number(fudingxiangItem['水份(%)'] || 0).toFixed(2) : '0.00',
+        };
+      }),
+      weightAndMetal: sortedDates.map(date => {
+        const jindingItem = jindingData.incoming?.find((item: any) => item.计量日期 === date);
+        const fudingxiangItem = fdxData.incoming?.find((item: any) => item.计量日期 === date);
+
+        return {
+          date,
+          jinding_weight: jindingItem ? Number(jindingItem['湿重(t)'] || 0).toFixed(1) : '0.0',
+          fudingxiang_weight: fudingxiangItem ? Number(fudingxiangItem['湿重(t)'] || 0).toFixed(1) : '0.0',
+          jinding_metal: jindingItem ? Number(jindingItem['Zn^M'] || 0).toFixed(1) : '0.0',
+          fudingxiang_metal: fudingxiangItem ? Number(fudingxiangItem['Zn^M'] || 0).toFixed(1) : '0.0',
+        };
+      }),
+    };
+
+    // 转换生产数据 - 分别从生产班报-JDXY和生产班报-FDX表获取数据
+    const productionChartData = {
+      originalOre: sortedDates.map(date => {
+        // 从JDXY表获取金鼎数据（分别保存白班和夜班）
+        const jindingDayShift = jindingData.production?.find((item: any) => item.日期 === date && item.班次 === '白班');
+        const jindingNightShift = jindingData.production?.find((item: any) => item.日期 === date && item.班次 === '夜班');
+
+        // 从FDX表获取富鼎翔数据（分别保存白班和夜班）
+        const fdxDayShift = fdxData.production?.find((item: any) => item.日期 === date && item.班次 === '白班');
+        const fdxNightShift = fdxData.production?.find((item: any) => item.日期 === date && item.班次 === '夜班');
+
+        return {
+          date,
+          // 水份数据 - 四条线
+          jinding_day_moisture: jindingDayShift ? Number(jindingDayShift['氧化锌原矿-水份（%）'] || 0).toFixed(2) : '0.00',
+          jinding_night_moisture: jindingNightShift ? Number(jindingNightShift['氧化锌原矿-水份（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_day_moisture: fdxDayShift ? Number(fdxDayShift['氧化锌原矿-水份（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_night_moisture: fdxNightShift ? Number(fdxNightShift['氧化锌原矿-水份（%）'] || 0).toFixed(2) : '0.00',
+          // Zn品位数据 - 四条线
+          jinding_day_zn_grade: jindingDayShift ? Number(jindingDayShift['氧化锌原矿-Zn全品位（%）'] || 0).toFixed(2) : '0.00',
+          jinding_night_zn_grade: jindingNightShift ? Number(jindingNightShift['氧化锌原矿-Zn全品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_day_zn_grade: fdxDayShift ? Number(fdxDayShift['氧化锌原矿-Zn全品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_night_zn_grade: fdxNightShift ? Number(fdxNightShift['氧化锌原矿-Zn全品位（%）'] || 0).toFixed(2) : '0.00',
+          // Pb品位数据 - 四条线
+          jinding_day_pb_grade: jindingDayShift ? Number(jindingDayShift['氧化锌原矿-Pb全品位（%）'] || 0).toFixed(2) : '0.00',
+          jinding_night_pb_grade: jindingNightShift ? Number(jindingNightShift['氧化锌原矿-Pb全品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_day_pb_grade: fdxDayShift ? Number(fdxDayShift['氧化锌原矿-Pb全品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_night_pb_grade: fdxNightShift ? Number(fdxNightShift['氧化锌原矿-Pb全品位（%）'] || 0).toFixed(2) : '0.00',
+        };
+      }),
+      concentrate: sortedDates.map(date => {
+        // 从JDXY表获取金鼎精矿数据
+        const jindingDayShift = jindingData.production?.find((item: any) => item.日期 === date && item.班次 === '白班');
+        const jindingNightShift = jindingData.production?.find((item: any) => item.日期 === date && item.班次 === '夜班');
+
+        // 从FDX表获取富鼎翔精矿数据
+        const fdxDayShift = fdxData.production?.find((item: any) => item.日期 === date && item.班次 === '白班');
+        const fdxNightShift = fdxData.production?.find((item: any) => item.日期 === date && item.班次 === '夜班');
+
+        return {
+          date,
+          // 精矿Zn品位数据 - 四条线
+          jinding_day_concentrate_zn: jindingDayShift ? Number(jindingDayShift['氧化锌精矿-Zn品位（%）'] || 0).toFixed(2) : '0.00',
+          jinding_night_concentrate_zn: jindingNightShift ? Number(jindingNightShift['氧化锌精矿-Zn品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_day_concentrate_zn: fdxDayShift ? Number(fdxDayShift['氧化锌精矿-Zn品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_night_concentrate_zn: fdxNightShift ? Number(fdxNightShift['氧化锌精矿-Zn品位（%）'] || 0).toFixed(2) : '0.00',
+          // 精矿Pb品位数据 - 四条线
+          jinding_day_concentrate_pb: jindingDayShift ? Number(jindingDayShift['氧化锌精矿-Pb品位（%）'] || 0).toFixed(2) : '0.00',
+          jinding_night_concentrate_pb: jindingNightShift ? Number(jindingNightShift['氧化锌精矿-Pb品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_day_concentrate_pb: fdxDayShift ? Number(fdxDayShift['氧化锌精矿-Pb品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_night_concentrate_pb: fdxNightShift ? Number(fdxNightShift['氧化锌精矿-Pb品位（%）'] || 0).toFixed(2) : '0.00',
+        };
+      }),
+      tailings: sortedDates.map(date => {
+        // 从JDXY表获取金鼎尾矿数据
+        const jindingDayShift = jindingData.production?.find((item: any) => item.日期 === date && item.班次 === '白班');
+        const jindingNightShift = jindingData.production?.find((item: any) => item.日期 === date && item.班次 === '夜班');
+
+        // 从FDX表获取富鼎翔尾矿数据
+        const fdxDayShift = fdxData.production?.find((item: any) => item.日期 === date && item.班次 === '白班');
+        const fdxNightShift = fdxData.production?.find((item: any) => item.日期 === date && item.班次 === '夜班');
+
+        return {
+          date,
+          // 尾矿Zn品位数据 - 四条线
+          jinding_day_tailings_zn: jindingDayShift ? Number(jindingDayShift['尾矿-Zn全品位（%）'] || 0).toFixed(2) : '0.00',
+          jinding_night_tailings_zn: jindingNightShift ? Number(jindingNightShift['尾矿-Zn全品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_day_tailings_zn: fdxDayShift ? Number(fdxDayShift['尾矿-Zn全品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_night_tailings_zn: fdxNightShift ? Number(fdxNightShift['尾矿-Zn全品位（%）'] || 0).toFixed(2) : '0.00',
+          // 尾矿Pb品位数据 - 四条线
+          jinding_day_tailings_pb: jindingDayShift ? Number(jindingDayShift['尾矿-Pb全品位（%）'] || 0).toFixed(2) : '0.00',
+          jinding_night_tailings_pb: jindingNightShift ? Number(jindingNightShift['尾矿-Pb全品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_day_tailings_pb: fdxDayShift ? Number(fdxDayShift['尾矿-Pb全品位（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_night_tailings_pb: fdxNightShift ? Number(fdxNightShift['尾矿-Pb全品位（%）'] || 0).toFixed(2) : '0.00',
+        };
+      }),
+      recovery: sortedDates.map(date => {
+        // 从JDXY表获取金鼎回收率数据
+        const jindingDayShift = jindingData.production?.find((item: any) => item.日期 === date && item.班次 === '白班');
+        const jindingNightShift = jindingData.production?.find((item: any) => item.日期 === date && item.班次 === '夜班');
+
+        // 从FDX表获取富鼎翔回收率数据
+        const fdxDayShift = fdxData.production?.find((item: any) => item.日期 === date && item.班次 === '白班');
+        const fdxNightShift = fdxData.production?.find((item: any) => item.日期 === date && item.班次 === '夜班');
+
+        return {
+          date,
+          // Zn回收率数据 - 四条线
+          jinding_day_zn_recovery: jindingDayShift ? Number(jindingDayShift['氧化矿Zn理论回收率（%）'] || 0).toFixed(2) : '0.00',
+          jinding_night_zn_recovery: jindingNightShift ? Number(jindingNightShift['氧化矿Zn理论回收率（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_day_zn_recovery: fdxDayShift ? Number(fdxDayShift['氧化矿Zn理论回收率（%）'] || 0).toFixed(2) : '0.00',
+          fudingxiang_night_zn_recovery: fdxNightShift ? Number(fdxNightShift['氧化矿Zn理论回收率（%）'] || 0).toFixed(2) : '0.00',
+        };
+      }),
+    };
+
+    // 转换出厂数据 - 分别从出厂精矿-JDXY、出厂精矿-FDX和出厂样内部取样表获取数据
+    const outgoingChartData = {
+      gradeAndMoisture: sortedDates.map(date => {
+        const jindingItem = jindingData.outgoing?.find((item: any) => item.计量日期 === date);
+        const fudingxiangItem = fdxData.outgoing?.find((item: any) => item.计量日期 === date);
+        const internalSampleItem = fdxData.internalSample?.find((item: any) => item.计量日期 === date);
+
+        return {
+          date,
+          jinding_grade: jindingItem ? Number(jindingItem.Zn || 0).toFixed(2) : '0.00',
+          fudingxiang_grade: fudingxiangItem ? Number(fudingxiangItem.Zn || 0).toFixed(2) : '0.00',
+          internal_grade: internalSampleItem ? Number(internalSampleItem.zn || 0).toFixed(2) : '0.00',
+          jinding_moisture: jindingItem ? Number(jindingItem['水份(%)'] || 0).toFixed(2) : '0.00',
+          fudingxiang_moisture: fudingxiangItem ? Number(fudingxiangItem['水份(%)'] || 0).toFixed(2) : '0.00',
+          internal_moisture: internalSampleItem ? Number(internalSampleItem['水份'] || 0).toFixed(2) : '0.00',
+        };
+      }),
+      weightAndMetal: sortedDates.map(date => {
+        const jindingItem = jindingData.outgoing?.find((item: any) => item.计量日期 === date);
+        const fudingxiangItem = fdxData.outgoing?.find((item: any) => item.计量日期 === date);
+
+        return {
+          date,
+          jinding_weight: jindingItem ? Number(jindingItem['湿重(t)'] || 0).toFixed(1) : '0.0',
+          fudingxiang_weight: fudingxiangItem ? Number(fudingxiangItem['湿重(t)'] || 0).toFixed(1) : '0.0',
+          jinding_metal: jindingItem ? Number(jindingItem['Zn^M'] || 0).toFixed(1) : '0.0',
+          fudingxiang_metal: fudingxiangItem ? Number(fudingxiangItem['Zn^M'] || 0).toFixed(1) : '0.0',
+        };
+      }),
+    };
+
+    return {
+      incoming: incomingChartData,
+      production: productionChartData,
+      outgoing: outgoingChartData,
+    };
+  }, []);
+
   // 根据日期范围更新图表数据
   const updateChartDataByDateRange = useCallback(async () => {
     if (comparisonStartDate && comparisonEndDate) {
       try {
-        // 获取真实数据
-        const [incomingData, productionData, outgoingData] = await Promise.all([
-          fetchIncomingData(comparisonStartDate, comparisonEndDate),
-          fetchProductionData(comparisonStartDate, comparisonEndDate),
-          fetchOutgoingData(comparisonStartDate, comparisonEndDate)
+        // 获取JDXY、FDX和对比数据
+        const [jindingData, fdxData, comparisonDataResult] = await Promise.all([
+          fetchJDXYData(comparisonStartDate, comparisonEndDate),
+          fetchFDXData(comparisonStartDate, comparisonEndDate),
+          fetchComparisonData(comparisonStartDate, comparisonEndDate)
         ]);
 
-        // 如果没有真实数据，使用模拟数据
-        if (incomingData.length === 0 && productionData.length === 0 && outgoingData.length === 0) {
+        // 检查是否有数据
+        const hasData = jindingData.incoming?.length > 0 || jindingData.outgoing?.length > 0 || jindingData.production?.length > 0 ||
+                       fdxData.incoming?.length > 0 || fdxData.outgoing?.length > 0 || fdxData.production?.length > 0 || fdxData.internalSample?.length > 0;
+
+        if (!hasData) {
+          // 如果没有真实数据，使用模拟数据
           const newChartData = generateMockData(comparisonStartDate, comparisonEndDate);
           setChartData(newChartData);
         } else {
           // 转换真实数据为图表格式
-          const transformedData = transformSupabaseDataToChartData(incomingData, productionData, outgoingData);
+          const transformedData = transformSupabaseDataToChartData(jindingData, fdxData);
           setChartData(transformedData);
+
+          // 设置对比数据
+          setComparisonData(comparisonDataResult);
         }
       } catch (error) {
         console.error('更新图表数据失败:', error);
@@ -528,7 +939,7 @@ function LabPageContent() {
         setChartData(newChartData);
       }
     }
-  }, [comparisonStartDate, comparisonEndDate, fetchIncomingData, fetchProductionData, fetchOutgoingData]);
+  }, [comparisonStartDate, comparisonEndDate, fetchJDXYData, fetchFDXData, fetchComparisonData]);
 
   // 手动刷新数据对比分析数据
   const refreshComparisonData = useCallback(async () => {
@@ -551,134 +962,7 @@ function LabPageContent() {
 
 
 
-  // 转换Supabase数据为图表数据格式
-  const transformSupabaseDataToChartData = useCallback((incomingData: any[], productionData: any[], outgoingData: any[]) => {
-    // 获取所有日期
-    const allDates = new Set<string>();
-    incomingData.forEach(item => allDates.add(item.计量日期));
-    productionData.forEach(item => allDates.add(item.日期));
-    outgoingData.forEach(item => allDates.add(item.计量日期));
 
-    const sortedDates = Array.from(allDates).sort();
-
-    // 转换进厂数据
-    const incomingChartData = {
-      gradeAndMoisture: sortedDates.map(date => {
-        const jindingItem = incomingData.find(item => item.计量日期 === date && item.发货单位名称 === '金鼎锌业');
-        const fudingxiangItem = incomingData.find(item => item.计量日期 === date && item.发货单位名称 === '富鼎翔');
-
-        return {
-          date,
-          jinding_grade: jindingItem ? Number(jindingItem.zn).toFixed(2) : '0.00',
-          fudingxiang_grade: fudingxiangItem ? Number(fudingxiangItem.zn).toFixed(2) : '0.00',
-          jinding_moisture: jindingItem ? Number(jindingItem['水份(%)']).toFixed(2) : '0.00',
-          fudingxiang_moisture: fudingxiangItem ? Number(fudingxiangItem['水份(%)']).toFixed(2) : '0.00',
-        };
-      }),
-      weightAndMetal: sortedDates.map(date => {
-        const jindingItem = incomingData.find(item => item.计量日期 === date && item.发货单位名称 === '金鼎锌业');
-        const fudingxiangItem = incomingData.find(item => item.计量日期 === date && item.发货单位名称 === '富鼎翔');
-
-        return {
-          date,
-          jinding_weight: jindingItem ? Number(jindingItem['湿重(t)']).toFixed(1) : '0.0',
-          fudingxiang_weight: fudingxiangItem ? Number(fudingxiangItem['湿重(t)']).toFixed(1) : '0.0',
-          jinding_metal: jindingItem ? Number(jindingItem['Zn^M']).toFixed(1) : '0.0',
-          fudingxiang_metal: fudingxiangItem ? Number(fudingxiangItem['Zn^M']).toFixed(1) : '0.0',
-        };
-      }),
-    };
-
-    // 转换生产数据
-    const productionChartData = {
-      originalOre: sortedDates.map(date => {
-        const dayShift = productionData.find(item => item.日期 === date && item.班次 === '白班');
-        const nightShift = productionData.find(item => item.日期 === date && item.班次 === '夜班');
-
-        return {
-          date,
-          jinding_moisture: dayShift ? Number(dayShift['氧化锌原矿-水份（%）']).toFixed(2) : '0.00',
-          fudingxiang_moisture: nightShift ? Number(nightShift['氧化锌原矿-水份（%）']).toFixed(2) : '0.00',
-          jinding_zn_grade: dayShift ? Number(dayShift['氧化锌原矿-Zn全品位（%）']).toFixed(2) : '0.00',
-          fudingxiang_zn_grade: nightShift ? Number(nightShift['氧化锌原矿-Zn全品位（%）']).toFixed(2) : '0.00',
-          jinding_pb_grade: dayShift ? Number(dayShift['氧化锌原矿-Pb全品位（%）']).toFixed(2) : '0.00',
-          fudingxiang_pb_grade: nightShift ? Number(nightShift['氧化锌原矿-Pb全品位（%）']).toFixed(2) : '0.00',
-        };
-      }),
-      concentrate: sortedDates.map(date => {
-        const dayShift = productionData.find(item => item.日期 === date && item.班次 === '白班');
-        const nightShift = productionData.find(item => item.日期 === date && item.班次 === '夜班');
-
-        return {
-          date,
-          jinding_zn_grade: dayShift ? Number(dayShift['氧化锌精矿-Zn品位（%）']).toFixed(2) : '0.00',
-          fudingxiang_zn_grade: nightShift ? Number(nightShift['氧化锌精矿-Zn品位（%）']).toFixed(2) : '0.00',
-          jinding_pb_grade: dayShift ? Number(dayShift['氧化锌精矿-Pb品位（%）']).toFixed(2) : '0.00',
-          fudingxiang_pb_grade: nightShift ? Number(nightShift['氧化锌精矿-Pb品位（%）']).toFixed(2) : '0.00',
-        };
-      }),
-      tailings: sortedDates.map(date => {
-        const dayShift = productionData.find(item => item.日期 === date && item.班次 === '白班');
-        const nightShift = productionData.find(item => item.日期 === date && item.班次 === '夜班');
-
-        return {
-          date,
-          jinding_zn_grade: dayShift ? Number(dayShift['尾矿-Zn全品位（%）']).toFixed(2) : '0.00',
-          fudingxiang_zn_grade: nightShift ? Number(nightShift['尾矿-Zn全品位（%）']).toFixed(2) : '0.00',
-          jinding_pb_grade: dayShift ? Number(dayShift['尾矿-Pb全品位（%）']).toFixed(2) : '0.00',
-          fudingxiang_pb_grade: nightShift ? Number(nightShift['尾矿-Pb全品位（%）']).toFixed(2) : '0.00',
-        };
-      }),
-      recovery: sortedDates.map(date => {
-        const dayShift = productionData.find(item => item.日期 === date && item.班次 === '白班');
-        const nightShift = productionData.find(item => item.日期 === date && item.班次 === '夜班');
-
-        return {
-          date,
-          jinding_zn_recovery: dayShift ? Number(dayShift['氧化矿Zn理论回收率（%）']).toFixed(2) : '0.00',
-          fudingxiang_zn_recovery: nightShift ? Number(nightShift['氧化矿Zn理论回收率（%）']).toFixed(2) : '0.00',
-          jinding_pb_recovery: '0.00', // 生产数据中没有Pb回收率
-          fudingxiang_pb_recovery: '0.00',
-        };
-      }),
-    };
-
-    // 转换出厂数据
-    const outgoingChartData = {
-      gradeAndMoisture: sortedDates.map(date => {
-        const jindingItem = outgoingData.find(item => item.计量日期 === date && item.发货单位名称 === '金鼎锌业');
-        const fudingxiangItem = outgoingData.find(item => item.计量日期 === date && item.发货单位名称 === '富鼎翔');
-
-        return {
-          date,
-          jinding_grade: jindingItem ? Number(jindingItem.zn).toFixed(2) : '0.00',
-          fudingxiang_grade: fudingxiangItem ? Number(fudingxiangItem.zn).toFixed(2) : '0.00',
-          internal_grade: (Math.random() * 3 + 52.5).toFixed(2), // 内部取样数据暂时使用模拟数据
-          jinding_moisture: jindingItem ? Number(jindingItem['水份(%)']).toFixed(2) : '0.00',
-          fudingxiang_moisture: fudingxiangItem ? Number(fudingxiangItem['水份(%)']).toFixed(2) : '0.00',
-          internal_moisture: (Math.random() * 2 + 5.5).toFixed(2), // 内部取样数据暂时使用模拟数据
-        };
-      }),
-      weightAndMetal: sortedDates.map(date => {
-        const jindingItem = outgoingData.find(item => item.计量日期 === date && item.发货单位名称 === '金鼎锌业');
-        const fudingxiangItem = outgoingData.find(item => item.计量日期 === date && item.发货单位名称 === '富鼎翔');
-
-        return {
-          date,
-          jinding_weight: jindingItem ? Number(jindingItem['湿重(t)']).toFixed(1) : '0.0',
-          fudingxiang_weight: fudingxiangItem ? Number(fudingxiangItem['湿重(t)']).toFixed(1) : '0.0',
-          jinding_metal: jindingItem ? Number(jindingItem['Zn^M']).toFixed(1) : '0.0',
-          fudingxiang_metal: fudingxiangItem ? Number(fudingxiangItem['Zn^M']).toFixed(1) : '0.0',
-        };
-      }),
-    };
-
-    return {
-      incoming: incomingChartData,
-      production: productionChartData,
-      outgoing: outgoingChartData,
-    };
-  }, []);
 
   // 计算单个指标的统计信息
   const calculateSingleStat = useCallback((data: any[], jindingKey: string, fudingxiangKey: string, isPercentage: boolean = false) => {
@@ -830,7 +1114,7 @@ function LabPageContent() {
           supplier: item.供应商,
           purchasing_unit_name: item.采购单位,
           filter_press_number: item.压滤机编号,
-          operator: item.操作员, // 添加操作员字段映射
+          operator: item.化验人员, // 添加化验人员字段映射
           sample_number: item.样品编号, // 添加样品编号字段映射
           assayed_metal_element: item.元素,
           shipment_sample_grade_percentage: parseFloat(item.出厂样品位) || null,
@@ -892,6 +1176,50 @@ function LabPageContent() {
     return value.toString();
   }, []);
 
+  // 排序函数
+  const handleSort = useCallback((field: string) => {
+    if (sortField === field) {
+      // 如果点击的是同一个字段，切换排序方向
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // 如果点击的是新字段，设置为升序
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  }, [sortField, sortDirection]);
+
+  // 排序数据
+  const sortedTableData = React.useMemo(() => {
+    if (!sortField) return tableData;
+
+    return [...tableData].sort((a, b) => {
+      let aValue = a[sortField as keyof SampleData];
+      let bValue = b[sortField as keyof SampleData];
+
+      // 处理null和undefined值
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return sortDirection === 'asc' ? 1 : -1;
+      if (bValue == null) return sortDirection === 'asc' ? -1 : 1;
+
+      // 数值类型排序
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      // 日期类型排序
+      if (sortField.includes('date') || sortField.includes('Date')) {
+        const dateA = new Date(aValue as string);
+        const dateB = new Date(bValue as string);
+        return sortDirection === 'asc' ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+      }
+
+      // 字符串类型排序
+      const strA = String(aValue).toLowerCase();
+      const strB = String(bValue).toLowerCase();
+      return sortDirection === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+    });
+  }, [tableData, sortField, sortDirection]);
+
   // 处理表单字段变化
   const handleFieldChange = useCallback((fieldKey: string, value: any) => {
     setEditFormData((prev: any) => ({
@@ -912,7 +1240,7 @@ function LabPageContent() {
     };
 
     const dataSourceTables = {
-      'shift_samples': '生产日报-FDX',
+      'shift_samples': '生产班报-FDX',
       'filter_samples': '压滤样化验记录',
       'incoming_samples': '进厂原矿-FDX',
       'outgoing_sample': '出厂精矿-FDX'
@@ -936,7 +1264,8 @@ function LabPageContent() {
             { key: '氧化锌原矿-Zn全品位（%）', label: '氧化锌原矿-Zn全品位（%）', type: 'number' },
             { key: '氧化锌原矿-Pb氧化率（%）', label: '氧化锌原矿-Pb氧化率（%）', type: 'number' },
             { key: '氧化锌原矿-Zn氧化率（%）', label: '氧化锌原矿-Zn氧化率（%）', type: 'number' },
-            { key: '氧化锌原矿-全金属（t）', label: '氧化锌原矿-全金属（t）', type: 'number' },
+            { key: '氧化锌原矿-全金属Pb（t）', label: '氧化锌原矿-全金属Pb（t）', type: 'number' },
+            { key: '氧化锌原矿-全金属Zn（t）', label: '氧化锌原矿-全金属Zn（t）', type: 'number' },
             { key: '氧化锌精矿-数量（t）', label: '氧化锌精矿-数量（t）', type: 'number' },
             { key: '氧化锌精矿-Pb品位（%）', label: '氧化锌精矿-Pb品位（%）', type: 'number' },
             { key: '氧化锌精矿-Zn品位（%）', label: '氧化锌精矿-Zn品位（%）', type: 'number' },
@@ -954,7 +1283,7 @@ function LabPageContent() {
         case 'filter_samples':
           return [
             { key: 'id', label: '记录ID', type: 'text' },
-            { key: '操作员', label: '操作员', type: 'text' },
+            { key: '化验人员', label: '化验人员', type: 'text' },
             { key: '开始时间', label: '开始时间', type: 'datetime' },
             { key: '结束时间', label: '结束时间', type: 'datetime' },
             { key: '水份', label: '水份(%)', type: 'number' },
@@ -1242,9 +1571,8 @@ function LabPageContent() {
         setIsEditMode(false);
         setEditFormData(null);
 
-        // 刷新表格数据
-        await fetchData();
-
+        // 优化：不重新获取所有数据，只更新当前显示的数据
+        // 如果需要刷新表格，可以在关闭对话框后再刷新
         console.log('数据保存成功');
       } else {
         console.error('保存失败:', result.error);
@@ -1553,53 +1881,53 @@ function LabPageContent() {
                       {/* 班样字段顺序：日期，班次，矿物类型，元素，品位(%)，水分(%) */}
                       {selectedDataSource === 'shift_samples' && (
                         <>
-                          <TableHead>日期</TableHead>
-                          <TableHead>班次</TableHead>
-                          <TableHead>矿物类型</TableHead>
-                          <TableHead>元素</TableHead>
-                          <TableHead>品位(%)</TableHead>
-                          <TableHead>水分(%)</TableHead>
+                          <SortableTableHead field="record_date" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>日期</SortableTableHead>
+                          <SortableTableHead field="shift" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>班次</SortableTableHead>
+                          <SortableTableHead field="mineral_type" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>矿物类型</SortableTableHead>
+                          <SortableTableHead field="element" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>元素</SortableTableHead>
+                          <SortableTableHead field="grade_value" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>品位(%)</SortableTableHead>
+                          <SortableTableHead field="moisture_value" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>水分(%)</SortableTableHead>
                         </>
                       )}
 
                       {/* 压滤样字段 */}
                       {selectedDataSource === 'filter_samples' && (
                         <>
-                          <TableHead>日期</TableHead>
-                          <TableHead>元素</TableHead>
-                          <TableHead>品位(%)</TableHead>
-                          <TableHead>水分(%)</TableHead>
-                          <TableHead>操作员</TableHead>
+                          <SortableTableHead field="record_date" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>日期</SortableTableHead>
+                          <SortableTableHead field="element" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>元素</SortableTableHead>
+                          <SortableTableHead field="grade_value" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>品位(%)</SortableTableHead>
+                          <SortableTableHead field="moisture_value" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>水分(%)</SortableTableHead>
+                          <SortableTableHead field="operator" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>化验人员</SortableTableHead>
                         </>
                       )}
 
                       {/* 进厂样字段 */}
                       {selectedDataSource === 'incoming_samples' && (
                         <>
-                          <TableHead>日期</TableHead>
-                          <TableHead>元素</TableHead>
-                          <TableHead>品位(%)</TableHead>
-                          <TableHead>水分(%)</TableHead>
-                          <TableHead>供应商</TableHead>
-                          <TableHead>原矿类型</TableHead>
+                          <SortableTableHead field="record_date" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>日期</SortableTableHead>
+                          <SortableTableHead field="element" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>元素</SortableTableHead>
+                          <SortableTableHead field="grade_value" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>品位(%)</SortableTableHead>
+                          <SortableTableHead field="moisture_value" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>水分(%)</SortableTableHead>
+                          <SortableTableHead field="supplier" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>供应商</SortableTableHead>
+                          <SortableTableHead field="mineral_type" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>原矿类型</SortableTableHead>
                         </>
                       )}
 
                       {/* 出厂样字段：日期，样品编号，元素，品位(%)，水分(%)，采购单位 */}
                       {selectedDataSource === 'outgoing_sample' && (
                         <>
-                          <TableHead>日期</TableHead>
-                          <TableHead>样品编号</TableHead>
-                          <TableHead>元素</TableHead>
-                          <TableHead>品位(%)</TableHead>
-                          <TableHead>水分(%)</TableHead>
-                          <TableHead>采购单位</TableHead>
+                          <SortableTableHead field="shipment_date" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>日期</SortableTableHead>
+                          <SortableTableHead field="sample_number" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>样品编号</SortableTableHead>
+                          <SortableTableHead field="element" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>元素</SortableTableHead>
+                          <SortableTableHead field="grade_value" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>品位(%)</SortableTableHead>
+                          <SortableTableHead field="moisture_value" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>水分(%)</SortableTableHead>
+                          <SortableTableHead field="purchasing_unit_name" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>采购单位</SortableTableHead>
                         </>
                       )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tableData.map((item) => (
+                    {sortedTableData.map((item) => (
                       <TableRow
                         key={item.id}
                         className="cursor-pointer hover:bg-muted/50"
@@ -1608,47 +1936,47 @@ function LabPageContent() {
                         {/* 班样数据显示：日期，班次，矿物类型，元素，品位(%)，水分(%) */}
                         {selectedDataSource === 'shift_samples' && (
                           <>
-                            <TableCell>{item.record_date}</TableCell>
-                            <TableCell>{item.shift}</TableCell>
-                            <TableCell>{item.mineral_type}</TableCell>
-                            <TableCell>{item.element}</TableCell>
-                            <TableCell>{item.grade_value?.toFixed(2) || '-'}</TableCell>
-                            <TableCell>{item.moisture_value?.toFixed(2) || '-'}</TableCell>
+                            <TableCell>{item.record_date || '--'}</TableCell>
+                            <TableCell>{item.shift || '--'}</TableCell>
+                            <TableCell>{item.mineral_type || '--'}</TableCell>
+                            <TableCell>{item.element || '--'}</TableCell>
+                            <TableCell>{formatValue(item.grade_value, 2)}</TableCell>
+                            <TableCell>{formatValue(item.moisture_value, 2)}</TableCell>
                           </>
                         )}
 
                         {/* 压滤样数据显示 */}
                         {selectedDataSource === 'filter_samples' && (
                           <>
-                            <TableCell>{item.record_date}</TableCell>
-                            <TableCell>{item.element}</TableCell>
-                            <TableCell>{item.grade_value?.toFixed(2) || '-'}</TableCell>
-                            <TableCell>{item.moisture_value?.toFixed(2) || '-'}</TableCell>
-                            <TableCell>{item.operator || '-'}</TableCell>
+                            <TableCell>{item.record_date || '--'}</TableCell>
+                            <TableCell>{item.element || '--'}</TableCell>
+                            <TableCell>{formatValue(item.grade_value, 2)}</TableCell>
+                            <TableCell>{formatValue(item.moisture_value, 2)}</TableCell>
+                            <TableCell>{item.operator || '--'}</TableCell>
                           </>
                         )}
 
                         {/* 进厂样数据显示 */}
                         {selectedDataSource === 'incoming_samples' && (
                           <>
-                            <TableCell>{item.record_date}</TableCell>
-                            <TableCell>{item.element}</TableCell>
-                            <TableCell>{item.grade_value?.toFixed(2) || '-'}</TableCell>
-                            <TableCell>{item.moisture_value?.toFixed(2) || '-'}</TableCell>
-                            <TableCell>{item.supplier}</TableCell>
-                            <TableCell>{item.mineral_type}</TableCell>
+                            <TableCell>{item.record_date || '--'}</TableCell>
+                            <TableCell>{item.element || '--'}</TableCell>
+                            <TableCell>{formatValue(item.grade_value, 2)}</TableCell>
+                            <TableCell>{formatValue(item.moisture_value, 2)}</TableCell>
+                            <TableCell>{item.supplier || '--'}</TableCell>
+                            <TableCell>{item.mineral_type || '--'}</TableCell>
                           </>
                         )}
 
                         {/* 出厂样数据显示：日期，样品编号，元素，品位(%)，水分(%)，采购单位 */}
                         {selectedDataSource === 'outgoing_sample' && (
                           <>
-                            <TableCell>{item.shipment_date}</TableCell>
-                            <TableCell>{item.sample_number || '-'}</TableCell>
-                            <TableCell>{item.element}</TableCell>
-                            <TableCell>{item.grade_value?.toFixed(2) || '-'}</TableCell>
-                            <TableCell>{item.moisture_value?.toFixed(2) || '-'}</TableCell>
-                            <TableCell>{item.purchasing_unit_name}</TableCell>
+                            <TableCell>{item.shipment_date || '--'}</TableCell>
+                            <TableCell>{item.sample_number || '--'}</TableCell>
+                            <TableCell>{item.element || '--'}</TableCell>
+                            <TableCell>{formatValue(item.grade_value, 2)}</TableCell>
+                            <TableCell>{formatValue(item.moisture_value, 2)}</TableCell>
+                            <TableCell>{item.purchasing_unit_name || '--'}</TableCell>
                           </>
                         )}
                       </TableRow>
@@ -1764,41 +2092,55 @@ function LabPageContent() {
 
             <TabsContent value="incoming" className="mt-4">
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">进厂原矿数据趋势</h3>
+                <h3 className="text-sm font-medium">进厂原矿数据趋势对比</h3>
                 <Carousel className="w-full">
                   <CarouselContent>
                     <CarouselItem>
                       <ComparisonChart
                         data={chartData.incoming.gradeAndMoisture}
-                        title="品位% + 水份% 对比"
-                        description="金鼎 VS 富鼎翔进厂原矿品位和水分对比"
+                        title="品位对比"
+                        description="金鼎 VS 富鼎翔进厂原矿品位对比"
                         lines={[
                           { dataKey: "jinding_grade" },
                           { dataKey: "fudingxiang_grade" },
+                        ]}
+                        trendText={generateSingleTrendText(chartData.incoming.gradeAndMoisture, "jinding_grade", "fudingxiang_grade", true)}
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={chartData.incoming.gradeAndMoisture}
+                        title="水份对比"
+                        description="金鼎 VS 富鼎翔进厂原矿水份对比"
+                        lines={[
                           { dataKey: "jinding_moisture" },
                           { dataKey: "fudingxiang_moisture" },
                         ]}
-                        trendText={generateMultiTrendText(chartData.incoming.gradeAndMoisture, [
-                          { jindingKey: "jinding_grade", fudingxiangKey: "fudingxiang_grade", label: "品位", isPercentage: true },
-                          { jindingKey: "jinding_moisture", fudingxiangKey: "fudingxiang_moisture", label: "水份", isPercentage: true }
-                        ])}
+                        trendText={generateSingleTrendText(chartData.incoming.gradeAndMoisture, "jinding_moisture", "fudingxiang_moisture", true)}
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
                         data={chartData.incoming.weightAndMetal}
-                        title="湿重t + 金属量t 对比"
-                        description="金鼎 VS 富鼎翔进厂原矿重量和金属量对比"
+                        title="湿重对比"
+                        description="金鼎 VS 富鼎翔进厂原矿湿重对比"
                         lines={[
                           { dataKey: "jinding_weight" },
                           { dataKey: "fudingxiang_weight" },
+                        ]}
+                        trendText={generateSingleTrendText(chartData.incoming.weightAndMetal, "jinding_weight", "fudingxiang_weight", false)}
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={chartData.incoming.weightAndMetal}
+                        title="金属量对比"
+                        description="金鼎 VS 富鼎翔进厂原矿金属量对比"
+                        lines={[
                           { dataKey: "jinding_metal" },
                           { dataKey: "fudingxiang_metal" },
                         ]}
-                        trendText={generateMultiTrendText(chartData.incoming.weightAndMetal, [
-                          { jindingKey: "jinding_weight", fudingxiangKey: "fudingxiang_weight", label: "湿重", isPercentage: false },
-                          { jindingKey: "jinding_metal", fudingxiangKey: "fudingxiang_metal", label: "金属量", isPercentage: false }
-                        ])}
+                        trendText={generateSingleTrendText(chartData.incoming.weightAndMetal, "jinding_metal", "fudingxiang_metal", false)}
                       />
                     </CarouselItem>
                   </CarouselContent>
@@ -1808,39 +2150,50 @@ function LabPageContent() {
 
                 {/* 进厂数据表格 */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-medium mb-3">进厂原矿详细数据</h4>
+                  <h4 className="text-sm font-medium mb-3">进厂原矿差值数据</h4>
                   <div className="border rounded-lg overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-center">日期</TableHead>
-                          <TableHead className="text-center">金鼎品位(%)</TableHead>
-                          <TableHead className="text-center">富鼎翔品位(%)</TableHead>
-                          <TableHead className="text-center">金鼎水分(%)</TableHead>
-                          <TableHead className="text-center">富鼎翔水分(%)</TableHead>
-                          <TableHead className="text-center">金鼎重量(t)</TableHead>
-                          <TableHead className="text-center">富鼎翔重量(t)</TableHead>
-                          <TableHead className="text-center">金鼎金属量(t)</TableHead>
-                          <TableHead className="text-center">富鼎翔金属量(t)</TableHead>
+                          <TableHead className="text-center">品位差值(%)</TableHead>
+                          <TableHead className="text-center">水分差值(%)</TableHead>
+                          <TableHead className="text-center">重量差值(t)</TableHead>
+                          <TableHead className="text-center">金属量差值(t)</TableHead>
+                          <TableHead className="text-center">发货单位</TableHead>
+                          <TableHead className="text-center">收货单位</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {chartData.incoming.gradeAndMoisture.map((item, index) => {
-                          const weightItem = chartData.incoming.weightAndMetal[index];
-                          return (
-                            <TableRow key={item.date}>
-                              <TableCell className="text-center font-medium">{item.date}</TableCell>
-                              <TableCell className="text-center">{item.jinding_grade}</TableCell>
-                              <TableCell className="text-center">{item.fudingxiang_grade}</TableCell>
-                              <TableCell className="text-center">{item.jinding_moisture}</TableCell>
-                              <TableCell className="text-center">{item.fudingxiang_moisture}</TableCell>
-                              <TableCell className="text-center">{weightItem?.jinding_weight || '--'}</TableCell>
-                              <TableCell className="text-center">{weightItem?.fudingxiang_weight || '--'}</TableCell>
-                              <TableCell className="text-center">{weightItem?.jinding_metal || '--'}</TableCell>
-                              <TableCell className="text-center">{weightItem?.fudingxiang_metal || '--'}</TableCell>
+                        {comparisonData.incoming && comparisonData.incoming.length > 0 ? (
+                          comparisonData.incoming.map((item: any) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="text-center font-medium">
+                                {new Date(item.计量日期).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item.zn ? Number(item.zn).toFixed(2) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['水份(%)'] ? Number(item['水份(%)']).toFixed(2) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['湿重(t)'] ? Number(item['湿重(t)']).toFixed(1) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['Zn^M'] ? Number(item['Zn^M']).toFixed(1) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">{item.发货单位名称 || '--'}</TableCell>
+                              <TableCell className="text-center">{item.收货单位名称 || '--'}</TableCell>
                             </TableRow>
-                          );
-                        })}
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-muted-foreground py-4">
+                              暂无进厂原矿对比数据
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -1850,78 +2203,119 @@ function LabPageContent() {
 
             <TabsContent value="production" className="mt-4">
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">生产过程数据分析</h3>
+                <h3 className="text-sm font-medium">生产班样数据趋势对比</h3>
                 <Carousel className="w-full">
                   <CarouselContent>
                     <CarouselItem>
                       <ComparisonChart
                         data={chartData.production.originalOre}
-                        title="原矿水份% + 原矿Zn品位% + 原矿Pb品位% 对比"
-                        description="金鼎 VS 富鼎翔原矿入选前的关键指标对比"
+                        title="原矿水份%对比"
+                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班原矿水份对比"
                         lines={[
-                          { dataKey: "jinding_moisture" },
-                          { dataKey: "fudingxiang_moisture" },
-                          { dataKey: "jinding_zn_grade" },
-                          { dataKey: "fudingxiang_zn_grade" },
-                          { dataKey: "jinding_pb_grade" },
-                          { dataKey: "fudingxiang_pb_grade" },
+                          { dataKey: "jinding_day_moisture" },
+                          { dataKey: "jinding_night_moisture" },
+                          { dataKey: "fudingxiang_day_moisture" },
+                          { dataKey: "fudingxiang_night_moisture" },
                         ]}
-                        trendText={generateMultiTrendText(chartData.production.originalOre, [
-                          { jindingKey: "jinding_moisture", fudingxiangKey: "fudingxiang_moisture", label: "原矿水份", isPercentage: true },
-                          { jindingKey: "jinding_zn_grade", fudingxiangKey: "fudingxiang_zn_grade", label: "原矿Zn品位", isPercentage: true },
-                          { jindingKey: "jinding_pb_grade", fudingxiangKey: "fudingxiang_pb_grade", label: "原矿Pb品位", isPercentage: true }
-                        ])}
+                        trendText="显示四条数据线的白班夜班对比趋势"
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={chartData.production.originalOre}
+                        title="原矿Zn品位%对比"
+                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班原矿Zn品位对比"
+                        lines={[
+                          { dataKey: "jinding_day_zn_grade" },
+                          { dataKey: "jinding_night_zn_grade" },
+                          { dataKey: "fudingxiang_day_zn_grade" },
+                          { dataKey: "fudingxiang_night_zn_grade" },
+                        ]}
+                        trendText="显示四条数据线的白班夜班对比趋势"
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={chartData.production.originalOre}
+                        title="原矿Pb品位%对比"
+                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班原矿Pb品位对比"
+                        lines={[
+                          { dataKey: "jinding_day_pb_grade" },
+                          { dataKey: "jinding_night_pb_grade" },
+                          { dataKey: "fudingxiang_day_pb_grade" },
+                          { dataKey: "fudingxiang_night_pb_grade" },
+                        ]}
+                        trendText="显示四条数据线的白班夜班对比趋势"
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
                         data={chartData.production.concentrate}
-                        title="精矿Zn品位% + 精矿Pb品位% 对比"
-                        description="金鼎 VS 富鼎翔精矿产品质量指标对比"
+                        title="精矿Zn品位%对比"
+                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班精矿Zn品位对比"
                         lines={[
-                          { dataKey: "jinding_zn_grade" },
-                          { dataKey: "fudingxiang_zn_grade" },
-                          { dataKey: "jinding_pb_grade" },
-                          { dataKey: "fudingxiang_pb_grade" },
+                          { dataKey: "jinding_day_concentrate_zn" },
+                          { dataKey: "jinding_night_concentrate_zn" },
+                          { dataKey: "fudingxiang_day_concentrate_zn" },
+                          { dataKey: "fudingxiang_night_concentrate_zn" },
                         ]}
-                        trendText={generateMultiTrendText(chartData.production.concentrate, [
-                          { jindingKey: "jinding_zn_grade", fudingxiangKey: "fudingxiang_zn_grade", label: "精矿Zn品位", isPercentage: true },
-                          { jindingKey: "jinding_pb_grade", fudingxiangKey: "fudingxiang_pb_grade", label: "精矿Pb品位", isPercentage: true }
-                        ])}
+                        trendText="显示四条数据线的白班夜班对比趋势"
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={chartData.production.concentrate}
+                        title="精矿Pb品位%对比"
+                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班精矿Pb品位对比"
+                        lines={[
+                          { dataKey: "jinding_day_concentrate_pb" },
+                          { dataKey: "jinding_night_concentrate_pb" },
+                          { dataKey: "fudingxiang_day_concentrate_pb" },
+                          { dataKey: "fudingxiang_night_concentrate_pb" },
+                        ]}
+                        trendText="显示四条数据线的白班夜班对比趋势"
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
                         data={chartData.production.tailings}
-                        title="尾矿Zn品位% + 尾矿Pb品位% 对比"
-                        description="金鼎 VS 富鼎翔尾矿损失控制指标对比"
+                        title="尾矿Zn品位%对比"
+                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班尾矿Zn品位对比"
                         lines={[
-                          { dataKey: "jinding_zn_grade" },
-                          { dataKey: "fudingxiang_zn_grade" },
-                          { dataKey: "jinding_pb_grade" },
-                          { dataKey: "fudingxiang_pb_grade" },
+                          { dataKey: "jinding_day_tailings_zn" },
+                          { dataKey: "jinding_night_tailings_zn" },
+                          { dataKey: "fudingxiang_day_tailings_zn" },
+                          { dataKey: "fudingxiang_night_tailings_zn" },
                         ]}
-                        trendText={generateMultiTrendText(chartData.production.tailings, [
-                          { jindingKey: "jinding_zn_grade", fudingxiangKey: "fudingxiang_zn_grade", label: "尾矿Zn品位", isPercentage: true },
-                          { jindingKey: "jinding_pb_grade", fudingxiangKey: "fudingxiang_pb_grade", label: "尾矿Pb品位", isPercentage: true }
-                        ])}
+                        trendText="显示四条数据线的白班夜班对比趋势"
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={chartData.production.tailings}
+                        title="尾矿Pb品位%对比"
+                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班尾矿Pb品位对比"
+                        lines={[
+                          { dataKey: "jinding_day_tailings_pb" },
+                          { dataKey: "jinding_night_tailings_pb" },
+                          { dataKey: "fudingxiang_day_tailings_pb" },
+                          { dataKey: "fudingxiang_night_tailings_pb" },
+                        ]}
+                        trendText="显示四条数据线的白班夜班对比趋势"
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
                         data={chartData.production.recovery}
-                        title="回收率% 对比"
-                        description="金鼎 VS 富鼎翔金属回收效率指标对比"
+                        title="Zn回收率%对比"
+                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班 Zn金属回收效率指标对比"
                         lines={[
-                          { dataKey: "jinding_zn_recovery" },
-                          { dataKey: "fudingxiang_zn_recovery" },
-                          { dataKey: "jinding_pb_recovery" },
-                          { dataKey: "fudingxiang_pb_recovery" },
+                          { dataKey: "jinding_day_zn_recovery" },
+                          { dataKey: "jinding_night_zn_recovery" },
+                          { dataKey: "fudingxiang_day_zn_recovery" },
+                          { dataKey: "fudingxiang_night_zn_recovery" },
                         ]}
-                        trendText={generateMultiTrendText(chartData.production.recovery, [
-                          { jindingKey: "jinding_zn_recovery", fudingxiangKey: "fudingxiang_zn_recovery", label: "Zn回收率", isPercentage: true },
-                          { jindingKey: "jinding_pb_recovery", fudingxiangKey: "fudingxiang_pb_recovery", label: "Pb回收率", isPercentage: true }
-                        ])}
+                        trendText="显示四条数据线的白班夜班对比趋势"
                       />
                     </CarouselItem>
                   </CarouselContent>
@@ -1931,40 +2325,48 @@ function LabPageContent() {
 
                 {/* 生产数据表格 */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-medium mb-3">生产过程详细数据</h4>
+                  <h4 className="text-sm font-medium mb-3">生产班样差值数据</h4>
                   <div className="border rounded-lg overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-center">日期</TableHead>
-                          <TableHead className="text-center">原矿水分-金鼎(%)</TableHead>
-                          <TableHead className="text-center">原矿水分-富鼎翔(%)</TableHead>
-                          <TableHead className="text-center">原矿Zn品位-金鼎(%)</TableHead>
-                          <TableHead className="text-center">原矿Zn品位-富鼎翔(%)</TableHead>
-                          <TableHead className="text-center">精矿Zn品位-金鼎(%)</TableHead>
-                          <TableHead className="text-center">精矿Zn品位-富鼎翔(%)</TableHead>
-                          <TableHead className="text-center">Zn回收率-金鼎(%)</TableHead>
-                          <TableHead className="text-center">Zn回收率-富鼎翔(%)</TableHead>
+                          <TableHead className="text-center">班次</TableHead>
+                          <TableHead className="text-center">原矿水分差值(%)</TableHead>
+                          <TableHead className="text-center">原矿Zn品位差值(%)</TableHead>
+                          <TableHead className="text-center">精矿Zn品位差值(%)</TableHead>
+                          <TableHead className="text-center">Zn回收率差值(%)</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {chartData.production.originalOre.map((item, index) => {
-                          const concentrateItem = chartData.production.concentrate[index];
-                          const recoveryItem = chartData.production.recovery[index];
-                          return (
-                            <TableRow key={item.date}>
-                              <TableCell className="text-center font-medium">{item.date}</TableCell>
-                              <TableCell className="text-center">{item.jinding_moisture}</TableCell>
-                              <TableCell className="text-center">{item.fudingxiang_moisture}</TableCell>
-                              <TableCell className="text-center">{item.jinding_zn_grade}</TableCell>
-                              <TableCell className="text-center">{item.fudingxiang_zn_grade}</TableCell>
-                              <TableCell className="text-center">{concentrateItem?.jinding_zn_grade || '--'}</TableCell>
-                              <TableCell className="text-center">{concentrateItem?.fudingxiang_zn_grade || '--'}</TableCell>
-                              <TableCell className="text-center">{recoveryItem?.jinding_zn_recovery || '--'}</TableCell>
-                              <TableCell className="text-center">{recoveryItem?.fudingxiang_zn_recovery || '--'}</TableCell>
+                        {comparisonData.production && comparisonData.production.length > 0 ? (
+                          comparisonData.production.map((item: any) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="text-center font-medium">
+                                {new Date(item.日期).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-center">{item.班次 || '--'}</TableCell>
+                              <TableCell className="text-center">
+                                {item['氧化锌原矿-水份（%）'] ? Number(item['氧化锌原矿-水份（%）']).toFixed(2) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['氧化锌原矿-Zn全品位（%）'] ? Number(item['氧化锌原矿-Zn全品位（%）']).toFixed(2) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['氧化锌精矿-Zn品位（%）'] ? Number(item['氧化锌精矿-Zn品位（%）']).toFixed(2) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['氧化矿Zn理论回收率（%）'] ? Number(item['氧化矿Zn理论回收率（%）']).toFixed(2) : '--'}
+                              </TableCell>
                             </TableRow>
-                          );
-                        })}
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
+                              暂无生产班样对比数据
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -1974,43 +2376,57 @@ function LabPageContent() {
 
             <TabsContent value="outgoing" className="mt-4">
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">出厂精矿质量分析</h3>
+                <h3 className="text-sm font-medium">出厂精矿数据趋势对比</h3>
                 <Carousel className="w-full">
                   <CarouselContent>
                     <CarouselItem>
                       <ComparisonChart
                         data={chartData.outgoing.gradeAndMoisture}
-                        title="金鼎 VS 富鼎翔 VS 内部取样 品位%+水份% 对比"
-                        description="出厂精矿品位和水分三方数据对比分析"
+                        title="品位%对比"
+                        description="金鼎 VS 富鼎翔 VS 内部取样品位对比"
                         lines={[
                           { dataKey: "jinding_grade" },
                           { dataKey: "fudingxiang_grade" },
                           { dataKey: "internal_grade" },
+                        ]}
+                        trendText={generateSingleTrendText(chartData.outgoing.gradeAndMoisture, "jinding_grade", "fudingxiang_grade", true)}
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={chartData.outgoing.gradeAndMoisture}
+                        title="水份%对比"
+                        description="金鼎 VS 富鼎翔 VS 内部取样水份对比"
+                        lines={[
                           { dataKey: "jinding_moisture" },
                           { dataKey: "fudingxiang_moisture" },
                           { dataKey: "internal_moisture" },
                         ]}
-                        trendText={generateMultiTrendText(chartData.outgoing.gradeAndMoisture, [
-                          { jindingKey: "jinding_grade", fudingxiangKey: "fudingxiang_grade", label: "品位", isPercentage: true },
-                          { jindingKey: "jinding_moisture", fudingxiangKey: "fudingxiang_moisture", label: "水份", isPercentage: true }
-                        ])}
+                        trendText={generateSingleTrendText(chartData.outgoing.gradeAndMoisture, "jinding_moisture", "fudingxiang_moisture", true)}
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
                         data={chartData.outgoing.weightAndMetal}
-                        title="湿重t + 金属量t 对比"
-                        description="金鼎 VS 富鼎翔出厂精矿重量和金属量对比"
+                        title="湿重t对比"
+                        description="金鼎 VS 富鼎翔出厂精矿湿重对比"
                         lines={[
                           { dataKey: "jinding_weight" },
                           { dataKey: "fudingxiang_weight" },
+                        ]}
+                        trendText={generateSingleTrendText(chartData.outgoing.weightAndMetal, "jinding_weight", "fudingxiang_weight", false)}
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={chartData.outgoing.weightAndMetal}
+                        title="金属量t对比"
+                        description="金鼎 VS 富鼎翔出厂精矿金属量对比"
+                        lines={[
                           { dataKey: "jinding_metal" },
                           { dataKey: "fudingxiang_metal" },
                         ]}
-                        trendText={generateMultiTrendText(chartData.outgoing.weightAndMetal, [
-                          { jindingKey: "jinding_weight", fudingxiangKey: "fudingxiang_weight", label: "湿重", isPercentage: false },
-                          { jindingKey: "jinding_metal", fudingxiangKey: "fudingxiang_metal", label: "金属量", isPercentage: false }
-                        ])}
+                        trendText={generateSingleTrendText(chartData.outgoing.weightAndMetal, "jinding_metal", "fudingxiang_metal", false)}
                       />
                     </CarouselItem>
                   </CarouselContent>
@@ -2020,43 +2436,52 @@ function LabPageContent() {
 
                 {/* 出厂数据表格 */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-medium mb-3">出厂精矿详细数据</h4>
+                  <h4 className="text-sm font-medium mb-3">出厂精矿差值数据</h4>
                   <div className="border rounded-lg overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-center">日期</TableHead>
-                          <TableHead className="text-center">金鼎品位(%)</TableHead>
-                          <TableHead className="text-center">富鼎翔品位(%)</TableHead>
-                          <TableHead className="text-center">内部取样品位(%)</TableHead>
-                          <TableHead className="text-center">金鼎水分(%)</TableHead>
-                          <TableHead className="text-center">富鼎翔水分(%)</TableHead>
-                          <TableHead className="text-center">内部取样水分(%)</TableHead>
-                          <TableHead className="text-center">金鼎重量(t)</TableHead>
-                          <TableHead className="text-center">富鼎翔重量(t)</TableHead>
-                          <TableHead className="text-center">金鼎金属量(t)</TableHead>
-                          <TableHead className="text-center">富鼎翔金属量(t)</TableHead>
+                          <TableHead className="text-center">品位差值(%)</TableHead>
+                          <TableHead className="text-center">水分差值(%)</TableHead>
+                          <TableHead className="text-center">重量差值(t)</TableHead>
+                          <TableHead className="text-center">金属量差值(t)</TableHead>
+                          <TableHead className="text-center">发货单位</TableHead>
+                          <TableHead className="text-center">收货单位</TableHead>
+                          <TableHead className="text-center">流向</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {chartData.outgoing.gradeAndMoisture.map((item, index) => {
-                          const weightItem = chartData.outgoing.weightAndMetal[index];
-                          return (
-                            <TableRow key={item.date}>
-                              <TableCell className="text-center font-medium">{item.date}</TableCell>
-                              <TableCell className="text-center">{item.jinding_grade}</TableCell>
-                              <TableCell className="text-center">{item.fudingxiang_grade}</TableCell>
-                              <TableCell className="text-center">{item.internal_grade}</TableCell>
-                              <TableCell className="text-center">{item.jinding_moisture}</TableCell>
-                              <TableCell className="text-center">{item.fudingxiang_moisture}</TableCell>
-                              <TableCell className="text-center">{item.internal_moisture}</TableCell>
-                              <TableCell className="text-center">{weightItem?.jinding_weight || '--'}</TableCell>
-                              <TableCell className="text-center">{weightItem?.fudingxiang_weight || '--'}</TableCell>
-                              <TableCell className="text-center">{weightItem?.jinding_metal || '--'}</TableCell>
-                              <TableCell className="text-center">{weightItem?.fudingxiang_metal || '--'}</TableCell>
+                        {comparisonData.outgoing && comparisonData.outgoing.length > 0 ? (
+                          comparisonData.outgoing.map((item: any) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="text-center font-medium">
+                                {new Date(item.计量日期).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item.zn ? Number(item.zn).toFixed(2) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['水份(%)'] ? Number(item['水份(%)']).toFixed(2) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['湿重(t)'] ? Number(item['湿重(t)']).toFixed(1) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item['Zn^M'] ? Number(item['Zn^M']).toFixed(1) : '--'}
+                              </TableCell>
+                              <TableCell className="text-center">{item.发货单位名称 || '--'}</TableCell>
+                              <TableCell className="text-center">{item.收货单位名称 || '--'}</TableCell>
+                              <TableCell className="text-center">{item.流向 || '--'}</TableCell>
                             </TableRow>
-                          );
-                        })}
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center text-muted-foreground py-4">
+                              暂无出厂精矿对比数据
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -2071,32 +2496,21 @@ function LabPageContent() {
       <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
         setIsDetailDialogOpen(open);
         if (!open) {
-          // 关闭对话框时重置所有状态
+          // 关闭对话框时重置所有状态并刷新数据
           setSelectedRowData(null);
           setRawRowData(null);
           setIsEditMode(false);
           setEditFormData(null);
+          // 在对话框关闭时刷新表格数据，确保显示最新数据
+          fetchData();
         }
       }}>
         <DialogContent className="max-w-lg w-[95vw] max-h-[85vh] overflow-y-auto">
           <DialogHeader className="pb-4">
-            {/* 简化Header布局：中心标题，右侧关闭按钮 */}
-            <div className="flex items-center justify-between min-h-[40px]">
-              {/* 中心：标题 */}
-              <div className="flex items-center gap-2 flex-1 justify-center">
-                <FlaskConical className="h-4 w-4" />
-                <DialogTitle className="text-base">化验数据详情</DialogTitle>
-              </div>
-
-              {/* 右侧：关闭按钮 */}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsDetailDialogOpen(false)}
-                className="h-8 w-8 p-0 shrink-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+            {/* 简化Header布局：居中标题 */}
+            <div className="flex items-center justify-center gap-2 min-h-[40px]">
+              <FlaskConical className="h-4 w-4" />
+              <DialogTitle className="text-base">化验数据详情</DialogTitle>
             </div>
             <DialogDescription className="text-center text-sm">
               {isEditMode ? '编辑化验记录信息' : '查看完整的化验记录信息'}
