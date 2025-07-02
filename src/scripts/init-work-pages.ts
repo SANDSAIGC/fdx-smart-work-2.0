@@ -64,20 +64,13 @@ const defaultWorkPages: WorkPageData[] = [
     排序: 4,
     状态: '启用'
   },
-  {
-    路径: '/production-control',
-    页面名称: '生产控制',
-    描述: '生产流程控制和数据监控',
-    图标: 'Activity',
-    排序: 5,
-    状态: '启用'
-  },
+
   {
     路径: '/purchase-management',
     页面名称: '采购管理',
     描述: '采购申请和订单管理系统',
     图标: 'ShoppingCart',
-    排序: 6,
+    排序: 5,
     状态: '启用'
   },
   {
@@ -85,6 +78,14 @@ const defaultWorkPages: WorkPageData[] = [
     页面名称: '采购申请',
     描述: '采购需求申请和审批流程',
     图标: 'FileText',
+    排序: 6,
+    状态: '启用'
+  },
+  {
+    路径: '/machine-operation-record',
+    页面名称: '机器运行记录',
+    描述: '机器设备运行状态记录和管理',
+    图标: 'Settings',
     排序: 7,
     状态: '启用'
   }

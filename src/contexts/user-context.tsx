@@ -302,8 +302,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('fdx_session_data', JSON.stringify(sessionInfo));
     localStorage.setItem('fdx_remember_me', rememberMe.toString());
 
-    // 保存用户ID用于后续API调用
+    // 保存用户ID用于后续API调用（保持兼容性，同时保存两个键名）
     localStorage.setItem('fdx_current_user_id', userData.id);
+    localStorage.setItem('userId', userData.id);
 
     console.log('🔄 [UserContext] 登录成功，正在加载完整用户信息...');
 

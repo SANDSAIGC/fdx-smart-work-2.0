@@ -43,11 +43,14 @@ export function HamburgerMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
-        {/* 用户名显示 */}
+        {/* 用户名和角色显示 */}
         {!isLoading && user && (
           <>
             <DropdownMenuLabel className="font-bold text-lg">
               {user.name}
+            </DropdownMenuLabel>
+            <DropdownMenuLabel className="text-sm text-muted-foreground font-normal">
+              {user.position}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
           </>

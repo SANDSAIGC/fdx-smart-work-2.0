@@ -52,6 +52,8 @@ export function LoginForm({
     return account.trim() !== "" && password.trim() !== "";
   }, [account, password]);
 
+
+
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -108,10 +110,12 @@ export function LoginForm({
         await login(result.user, rememberMe);
         console.log('✅ [登录] 用户登录状态已保存，记住我:', rememberMe);
 
-        // 直接重定向到用户的工作页面，避免闪现问题
+        // 直接重定向，避免闪现问题
         const redirectRoute = result.user.重定向路由 || '/lab';
         console.log('🎯 [登录] 直接重定向到工作页面:', redirectRoute);
-        router.replace(redirectRoute);
+
+        // 使用window.location.href确保完全重定向
+        window.location.href = redirectRoute;
       }
 
     } catch (error: unknown) {

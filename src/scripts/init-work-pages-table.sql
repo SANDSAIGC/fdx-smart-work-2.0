@@ -41,9 +41,9 @@ INSERT INTO "工作页面" ("路径", "页面名称", "描述", "图标", "排�
 ('/boss', '总指挥工作台', '总指挥管理和决策支持系统', 'Crown', 2, '启用'),
 ('/filter-press-workshop', '压滤车间', '压滤机操作和数据管理工作台', 'Filter', 3, '启用'),
 ('/manager', '管理员工作台', '部门管理和流程监控系统', 'UserCheck', 4, '启用'),
-('/production-control', '生产控制', '生产流程控制和数据监控', 'Activity', 5, '启用'),
-('/purchase-management', '采购管理', '采购申请和订单管理系统', 'ShoppingCart', 6, '启用'),
-('/purchase-request', '采购申请', '采购需求申请和审批流程', 'FileText', 7, '启用')
+('/purchase-management', '采购管理', '采购申请和订单管理系统', 'ShoppingCart', 5, '启用'),
+('/purchase-request', '采购申请', '采购需求申请和审批流程', 'FileText', 6, '启用'),
+('/machine-operation-record', '机器运行记录', '机器设备运行状态记录和管理', 'Settings', 7, '启用')
 ON CONFLICT ("路径") DO UPDATE SET
     "页面名称" = EXCLUDED."页面名称",
     "描述" = EXCLUDED."描述",

@@ -42,9 +42,10 @@ SELECT 页面名称, 页面路由 FROM "工作页面";
 | 师傅 | 球磨车间记录 | `/ball-mill-workshop` | 球磨机操作和监控工作台 | 李寻欢(bal001) |
 | 师傅 | 压滤车间记录 | `/filter-press-workshop` | 压滤机操作和数据管理工作台 | 花满楼(fil001) |
 | 化验师 | 实验室工作台 | `/lab` | 实验室检测和数据分析 | 楚留香(lab001) |
-| 师傅 | 生产控制中心 | `/production-control` | 生产流程控制和数据监控 | 陆小凤(con001) |
+
 | 机修组 | 采购申请系统 | `/purchase-request` | 采购申请和需求管理 | 修宏涛 |
 | 组长 | 采购管理系统 | `/purchase-management` | 采购订单和供应商管理 | (待分配) |
+| 设备员 | 机器运行记录 | `/machine-operation-record` | 机器设备运行状态记录和管理 | (待分配) |
 
 **⚠️ 重要说明**: 重定向完全基于"工作页面"字段，而非"职称"字段。相同职称的用户可能被分配到不同的工作页面。
 
@@ -315,9 +316,10 @@ ORDER BY u.职称;
 | 10 | 总指挥工作台 | `/boss` | ✅ 已配置 |
 | 11 | 压滤车间记录 | `/filter-press-workshop` | ✅ 已配置 |
 | 12 | 管理员工作台 | `/manager` | ✅ 已配置 |
-| 13 | 生产控制中心 | `/production-control` | ✅ 已配置 |
+
 | 14 | 采购管理系统 | `/purchase-management` | ✅ 已配置 |
 | 15 | 采购申请系统 | `/purchase-request` | ✅ 已配置 |
+| 16 | 机器运行记录 | `/machine-operation-record` | ✅ 已配置 |
 
 ### 用户分布统计
 - **总指挥**: 5名用户 → 总指挥工作台

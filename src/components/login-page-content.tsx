@@ -14,10 +14,10 @@ export function LoginPageContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // 注意：登录重定向现在由登录表单直接处理，这里不再需要重定向逻辑
-    // 这样可以避免重复重定向导致的错误页面跳转
+    // 登录重定向现在由登录表单直接处理，这里不再需要重定向逻辑
+    // 这样可以避免重复重定向导致的闪现问题
     if (isAuthenticated && user) {
-      console.log('✅ [登录页面] 用户已登录，但重定向由登录表单处理');
+      console.log('✅ [登录页面] 用户已登录，重定向由登录表单处理');
     }
   }, [isAuthenticated, user]);
 
@@ -33,18 +33,8 @@ export function LoginPageContent() {
     );
   }
 
-  // 如果已登录，不显示任何内容（立即重定向）
-  if (isAuthenticated && user) {
-    console.log('🎯 [登录页面] 用户已登录，重定向处理中...');
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">跳转中...</p>
-        </div>
-      </div>
-    );
-  }
+  // 如果已登录，直接显示登录表单（避免显示"跳转中"）
+  // 因为重定向由登录表单处理，这里不需要显示跳转状态
 
   // 未登录，显示登录表单
   console.log('📝 [登录页面] 显示登录表单');
