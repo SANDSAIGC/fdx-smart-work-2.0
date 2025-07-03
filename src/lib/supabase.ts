@@ -177,6 +177,22 @@ export interface OutgoingSampleData {
   Zn: number
 }
 
+export interface BallMillData {
+  操作员: string
+  日期: string
+  时间: string
+  进料流量?: number
+  一号壶称重?: number
+  一号壶浓度?: number
+  二号壶称重?: number
+  二号壶浓度?: number
+  二号壶细度称重?: number
+  二号壶细度?: number
+  一号壶称重照片url?: string
+  二号壶称重照片url?: string
+  二号壶细度称重照片url?: string
+}
+
 // 获取当前用户信息的辅助函数
 async function getCurrentUserHeaders(): Promise<Record<string, string>> {
   try {
@@ -335,6 +351,38 @@ export class SampleDataService {
       return result
     } catch (error) {
       console.error('❌ [出厂样服务] 网络异常:', error)
+      return {
+        success: false,
+        message: `网络连接失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+
+  // 提交球磨车间数据到浓细度记录-FDX表
+  static async submitBallMillData(data: BallMillData): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const headers = await getCurrentUserHeaders();
+
+      const response = await fetch('/api/samples/ball-mill-data', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      })
+
+      // 检查HTTP状态码
+      if (!response.ok) {
+        console.error('❌ [球磨车间服务] HTTP错误:', response.status, response.statusText)
+        return {
+          success: false,
+          message: `网络请求失败: ${response.status} ${response.statusText}`
+        }
+      }
+
+      const result = await response.json()
+      console.log('📤 [球磨车间服务] API响应:', result)
+      return result
+    } catch (error) {
+      console.error('❌ [球磨车间服务] 网络异常:', error)
       return {
         success: false,
         message: `网络连接失败: ${error instanceof Error ? error.message : '未知错误'}`
