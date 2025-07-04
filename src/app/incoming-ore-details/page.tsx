@@ -90,6 +90,14 @@ export default function IncomingOreDetailsPage() {
   const [tableStartDate, setTableStartDate] = useState(format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [tableEndDate, setTableEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  // 排序状态
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // 排序函数
+  const toggleSort = () => {
+    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
+
   // 获取最新日期并设置为默认值
   const updateSingleDateToLatest = useCallback(() => {
     if (jdxyData.length > 0) {
@@ -216,8 +224,8 @@ export default function IncomingOreDetailsPage() {
       Pb: item.总重量 > 0 ? item.Pb加权总和 / item.总重量 : 0,
       Zn: item.总重量 > 0 ? item.Zn加权总和 / item.总重量 : 0,
       记录数: item.记录数
-    })).sort((a, b) => b.计量日期.localeCompare(a.计量日期));
-  }, [jdxyData, tableStartDate, tableEndDate]);
+    })).sort((a, b) => sortOrder === 'desc' ? b.计量日期.localeCompare(a.计量日期) : a.计量日期.localeCompare(b.计量日期));
+  }, [jdxyData, tableStartDate, tableEndDate, sortOrder]);
 
   // 处理富鼎翔表格聚合数据
   const processFdxTableData = useCallback(() => {
@@ -267,8 +275,8 @@ export default function IncomingOreDetailsPage() {
       Pb: item.总重量 > 0 ? item.Pb加权总和 / item.总重量 : 0,
       Zn: item.总重量 > 0 ? item.Zn加权总和 / item.总重量 : 0,
       记录数: item.记录数
-    })).sort((a, b) => b.计量日期.localeCompare(a.计量日期));
-  }, [fdxData, tableStartDate, tableEndDate]);
+    })).sort((a, b) => sortOrder === 'desc' ? b.计量日期.localeCompare(a.计量日期) : a.计量日期.localeCompare(b.计量日期));
+  }, [fdxData, tableStartDate, tableEndDate, sortOrder]);
 
   // 图表配置
   const chartConfig = {
@@ -871,7 +879,7 @@ export default function IncomingOreDetailsPage() {
                     <CardContent className="w-full">
                       <ChartContainer config={chartConfig} className="h-[300px] w-full">
                         <LineChart data={processTrendData()}>
-                          <CartesianGrid vertical={false} />
+                          <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="date"
                             tickLine={false}
@@ -905,7 +913,7 @@ export default function IncomingOreDetailsPage() {
                     <CardContent className="w-full">
                       <ChartContainer config={chartConfig} className="h-[300px] w-full">
                         <LineChart data={processTrendData()}>
-                          <CartesianGrid vertical={false} />
+                          <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="date"
                             tickLine={false}
@@ -946,7 +954,7 @@ export default function IncomingOreDetailsPage() {
                     <CardContent className="w-full">
                       <ChartContainer config={chartConfig} className="h-[300px] w-full">
                         <LineChart data={processTrendData()}>
-                          <CartesianGrid vertical={false} />
+                          <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="date"
                             tickLine={false}
@@ -987,7 +995,7 @@ export default function IncomingOreDetailsPage() {
                     <CardContent className="w-full">
                       <ChartContainer config={chartConfig} className="h-[300px] w-full">
                         <LineChart data={processTrendData()}>
-                          <CartesianGrid vertical={false} />
+                          <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="date"
                             tickLine={false}
@@ -1200,7 +1208,12 @@ export default function IncomingOreDetailsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>日期</TableHead>
+                        <TableHead
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={toggleSort}
+                        >
+                          日期 {sortOrder === 'desc' ? '↓' : '↑'}
+                        </TableHead>
                         <TableHead>进厂湿重(t)</TableHead>
                         <TableHead>水份(%)</TableHead>
                         <TableHead>原矿Pb品位(%)</TableHead>
@@ -1232,7 +1245,12 @@ export default function IncomingOreDetailsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>日期</TableHead>
+                        <TableHead
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={toggleSort}
+                        >
+                          日期 {sortOrder === 'desc' ? '↓' : '↑'}
+                        </TableHead>
                         <TableHead>进厂湿重(t)</TableHead>
                         <TableHead>水份(%)</TableHead>
                         <TableHead>原矿Pb品位(%)</TableHead>
