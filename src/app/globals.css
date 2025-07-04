@@ -121,4 +121,82 @@
   }
 }
 
+@layer components {
+  /* 移动端优化的柱状图样式 */
+  .mobile-optimized-chart {
+    @apply w-full;
+  }
+
+  .mobile-optimized-chart .recharts-cartesian-axis-tick-value {
+    @apply text-sm font-semibold;
+  }
+
+  .mobile-optimized-chart .recharts-label {
+    @apply text-xs font-medium;
+  }
+
+  /* 移动端图表标题优化 */
+  .chart-title-mobile {
+    @apply text-lg font-bold;
+  }
+
+  @media (min-width: 640px) {
+    .chart-title-mobile {
+      @apply text-xl;
+    }
+  }
+
+  /* 移动端图表描述优化 */
+  .chart-description-mobile {
+    @apply text-sm text-muted-foreground;
+  }
+
+  @media (min-width: 640px) {
+    .chart-description-mobile {
+      @apply text-base;
+    }
+  }
+
+  /* 亮色模式下的柱状图样式 - 参考示例配色 */
+  .bar-fdx {
+    fill: #4f46e5; /* 蓝色柱体 - 富鼎翔 */
+  }
+
+  .bar-jdxy {
+    fill: #6366f1; /* 稍浅的蓝色柱体 - 金鼎锌业 */
+  }
+
+  /* 暗色模式下的柱状图样式 - 参考示例配色 */
+  .dark .bar-fdx {
+    fill: #6366f1 !important; /* 暗色模式下的蓝色柱体 - 富鼎翔 */
+  }
+
+  .dark .bar-jdxy {
+    fill: #8b5cf6 !important; /* 暗色模式下的紫蓝色柱体 - 金鼎锌业 */
+  }
+
+  /* 柱状图容器优化 */
+  .chart-container-optimized {
+    @apply relative;
+  }
+
+  .chart-container-optimized::after {
+    content: '';
+    @apply absolute right-0 top-0 bottom-0 w-1/4 pointer-events-none;
+    background: transparent;
+  }
+
+  /* 柱状图文字颜色优化 */
+  .bar-label-text {
+    fill: white;
+    font-weight: 600;
+    font-size: 11px;
+  }
+
+  /* 确保在任何主题下文字都清晰可见 */
+  .dark .bar-label-text {
+    fill: white;
+  }
+}
+
 

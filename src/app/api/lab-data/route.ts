@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 
 // 数据表映射配置
 const TABLE_MAPPING = {
@@ -212,25 +211,39 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 构建查询
-    let query = supabase.from(tableName).select('*');
+    // 获取环境变量
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !anonKey) {
+      return NextResponse.json({
+        success: false,
+        error: 'Environment variables not configured',
+        message: 'Supabase配置缺失'
+      }, { status: 500 });
+    }
+
+    // 构建查询URL
+    let queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}?select=*`;
 
     // 添加日期范围筛选
     if (startDate && endDate) {
+      let dateField = 'created_at';
       switch (sampleType) {
         case 'shift_samples':
-          query = query.gte('日期', startDate).lte('日期', endDate);
+          dateField = '日期';
           break;
         case 'filter_samples':
-          query = query.gte('开始时间', startDate).lte('开始时间', endDate);
+          dateField = '开始时间';
           break;
         case 'incoming_samples':
-          query = query.gte('计量日期', startDate).lte('计量日期', endDate);
+          dateField = '计量日期';
           break;
         case 'outgoing_sample':
-          query = query.gte('计量日期', startDate).lte('计量日期', endDate);
+          dateField = '计量日期';
           break;
       }
+      queryUrl += `&${dateField}=gte.${startDate}&${dateField}=lte.${endDate}`;
     }
 
     // 添加排序和限制 - 按日期字段倒序排列
@@ -250,19 +263,28 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    query = query.order(orderField, { ascending: false }).limit(limit);
+    queryUrl += `&order=${orderField}.desc&limit=${limit}`;
 
-    // 执行查询
-    const { data: rawData, error } = await query;
+    // 发送HTTP请求到Supabase
+    const response = await fetch(queryUrl, {
+      method: 'GET',
+      headers: {
+        'apikey': anonKey,
+        'Authorization': `Bearer ${anonKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-    if (error) {
-      console.error('Supabase 查询错误:', error);
+    if (!response.ok) {
+      console.error('Supabase 查询错误:', response.status, response.statusText);
       return NextResponse.json({
         success: false,
         error: 'Database query failed',
-        message: error.message
+        message: `查询失败: ${response.statusText}`
       }, { status: 500 });
     }
+
+    const rawData = await response.json();
 
     // 转换数据格式
     let transformedData: any[] = [];

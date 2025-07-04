@@ -23,7 +23,6 @@
 修复了多个页面中Calendar组件的重复定义错误：
 - `src/app/outgoing-data-details/page.tsx`
 - `src/app/purchase-request/page.tsx`
-- `src/app/incoming-data-details/page.tsx`
 - `src/app/filter-press-data-details/page.tsx`
 
 **问题**: 同时导入了 `Calendar as CalendarLucide` 和 `Calendar` 组件

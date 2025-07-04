@@ -5,11 +5,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileText, Bell, CalendarCheck, Shield,
-  FileInput, FileChartLine, FileImage, FileOutput,
+  FileChartLine, FileImage, FileOutput,
   Gauge, Wrench, ShoppingCart, Bot,
   TrendingUp, BarChart3, DollarSign,
   Activity, Target, Award, Zap, Factory, Package,
-  RefreshCw, TestTube, Truck, Beaker, Users, Building, Filter, Settings, CheckCircle, Calendar
+  RefreshCw, TestTube, Truck, Beaker, Users, Building, Filter, Settings, CheckCircle, Calendar, FileInput
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { ThemeToggle } from "@/components/theme-toggle";
+import ProductionDataChart from "@/components/charts/ProductionDataChart";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { Footer } from "@/components/ui/footer";
 import DataVs1 from "@/components/data-vs-1";
@@ -109,18 +110,18 @@ export default function BossPage() {
     { id: "2024年11月", name: "2024年11月", dateRange: "2024年11月1日-11月30日" },
   ];
 
-  // 图表配置
+  // 图表配置 - 移动端优化版本
   const chartConfig = {
     value: {
       label: "数值",
     },
     富鼎翔: {
       label: "富鼎翔",
-      color: "var(--chart-1)",
+      color: "hsl(var(--chart-1))",
     },
     金鼎锌业: {
       label: "金鼎锌业",
-      color: "var(--chart-2)",
+      color: "hsl(var(--chart-2))",
     },
   } satisfies ChartConfig;
 
@@ -193,8 +194,8 @@ export default function BossPage() {
     {
       icon: <FileInput className="h-6 w-6" />,
       label: "进厂数据",
-      path: "/incoming-data-details",
-      description: "原料进厂数据管理",
+      path: "/incoming-ore-details",
+      description: "进厂原矿数据详情",
       color: "blue"
     },
     {
@@ -931,124 +932,7 @@ export default function BossPage() {
     );
   };
 
-  // Bar Chart - Custom Label组件
-  const CustomLabelBarChart = ({ data, title, type }: {
-    data: Array<{ parameter: string; company: string; value: number; fill: string }>,
-    title: string,
-    type: "原料" | "产品"
-  }) => {
-    // 转换数据格式为单一Bar Chart格式，每个参数一个条目
-    const chartData = React.useMemo(() => {
-      const result: Array<{ parameter: string; 富鼎翔: number; 金鼎锌业: number }> = [];
-      const grouped: { [key: string]: { 富鼎翔?: number; 金鼎锌业?: number } } = {};
 
-      data.forEach(item => {
-        if (!grouped[item.parameter]) {
-          grouped[item.parameter] = {};
-        }
-        grouped[item.parameter][item.company as '富鼎翔' | '金鼎锌业'] = item.value;
-      });
-
-      Object.entries(grouped).forEach(([parameter, values]) => {
-        result.push({
-          parameter,
-          富鼎翔: values.富鼎翔 || 0,
-          金鼎锌业: values.金鼎锌业 || 0
-        });
-      });
-
-      return result;
-    }, [data]);
-
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {type === "原料" ? <Factory className="h-5 w-5" /> : <Package className="h-5 w-5" />}
-            {title}
-          </CardTitle>
-          <CardDescription>
-            {selectedCycle} ({getCurrentCycleDateRange()}) - {type}累计数据对比
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ChartContainer config={chartConfig} className="min-h-[350px] sm:min-h-[450px] w-full h-full">
-            <BarChart
-              accessibilityLayer
-              data={chartData}
-              layout="vertical"
-              width="100%"
-              height="100%"
-              margin={{
-                right: 20,
-                left: 60,
-                top: 15,
-                bottom: 15,
-              }}
-            >
-              <CartesianGrid horizontal={false} />
-              <YAxis
-                dataKey="parameter"
-                type="category"
-                tickLine={false}
-                tickMargin={8}
-                axisLine={false}
-                tick={{ fontSize: 10 }}
-                width={55}
-                tickFormatter={(value) => value.length > 5 ? value.slice(0, 5) + '..' : value}
-              />
-              <XAxis dataKey="富鼎翔" type="number" hide />
-              <ChartTooltip
-                cursor={false}
-                content={<ChartTooltipContent indicator="line" />}
-              />
-              <Bar
-                dataKey="富鼎翔"
-                layout="vertical"
-                fill="var(--color-富鼎翔)"
-                radius={4}
-                maxBarSize={18}
-              >
-                {/* 移除重复的参数标题文字显示 */}
-                <LabelList
-                  dataKey="富鼎翔"
-                  position="right"
-                  offset={6}
-                  className="fill-foreground"
-                  fontSize={9}
-                  formatter={(value: number) => `${value}t`}
-                />
-              </Bar>
-              <Bar
-                dataKey="金鼎锌业"
-                layout="vertical"
-                fill="var(--color-金鼎锌业)"
-                radius={4}
-                maxBarSize={18}
-              >
-                <LabelList
-                  dataKey="金鼎锌业"
-                  position="right"
-                  offset={6}
-                  className="fill-foreground"
-                  fontSize={9}
-                  formatter={(value: number) => `${value}t`}
-                />
-              </Bar>
-            </BarChart>
-          </ChartContainer>
-        </CardContent>
-        <CardFooter className="flex-col items-start gap-2 text-sm">
-          <div className="flex gap-2 leading-none font-medium">
-            生产累计数据对比 <TrendingUp className="h-4 w-4" />
-          </div>
-          <div className="text-muted-foreground leading-none">
-            显示富鼎翔与金鼎锌业{type}累计数据对比情况
-          </div>
-        </CardFooter>
-      </Card>
-    );
-  };
 
   // 移除持续刷新的定时器，保持静态数据显示
   // 生产率数据现在保持静态，只在页面加载时设置一次
@@ -1157,10 +1041,12 @@ export default function BossPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <CustomLabelBarChart
+                  <ProductionDataChart
                     data={rawMaterialData}
                     title="原料累计数据对比"
                     type="原料"
+                    selectedCycle={selectedCycle}
+                    getCurrentCycleDateRange={getCurrentCycleDateRange}
                   />
                 )}
               </TabsContent>
@@ -1205,10 +1091,12 @@ export default function BossPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <CustomLabelBarChart
+                  <ProductionDataChart
                     data={productData}
                     title="产品累计数据对比"
                     type="产品"
+                    selectedCycle={selectedCycle}
+                    getCurrentCycleDateRange={getCurrentCycleDateRange}
                   />
                 )}
               </TabsContent>
