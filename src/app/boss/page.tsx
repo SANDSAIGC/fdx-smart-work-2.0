@@ -29,9 +29,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import ProductionDataChart from "@/components/charts/ProductionDataChart";
-import { HamburgerMenu } from "@/components/hamburger-menu";
+import { BossHamburgerMenu } from "@/components/boss-hamburger-menu";
 import { Footer } from "@/components/ui/footer";
 import DataVs1 from "@/components/data-vs-1";
+import DataVsFuke from "@/components/data-vs-fuke";
 
 // 类型定义
 interface ManagementModule {
@@ -201,15 +202,14 @@ export default function BossPage() {
     {
       icon: <FileChartLine className="h-6 w-6" />,
       label: "生产数据",
-      path: "",
+      path: "/shift-report-details",
       description: "生产过程数据监控",
-      color: "green",
-      disabled: true
+      color: "green"
     },
     {
       icon: <FileOutput className="h-6 w-6" />,
       label: "出厂数据",
-      path: "/outgoing-data-details",
+      path: "/outgoing-concentrate-details",
       description: "产品出厂数据",
       color: "orange"
     },
@@ -598,45 +598,70 @@ export default function BossPage() {
     };
   }, []);
 
-  // 图表数据状态 - 使用空初始值避免Hydration错误
-  const [mockComparisonChartData, setMockComparisonChartData] = React.useState<any>(null);
-  const [isChartDataInitialized, setIsChartDataInitialized] = React.useState(false);
 
-  // 客户端初始化图表数据（避免Hydration错误）
-  useEffect(() => {
-    if (!isChartDataInitialized) {
-      setMockComparisonChartData(generateMockChartData());
-      setIsChartDataInitialized(true);
-    }
-  }, [isChartDataInitialized]);
 
-  // 刷新数据对比分析数据
+  // 刷新数据对比分析数据 - 使用真实API
   const refreshComparisonData = React.useCallback(async () => {
     setIsRefreshingComparison(true);
     try {
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 计算日期范围（最近一周）
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7);
 
-      // 模拟获取对比数据
-      const mockData = {
-        incoming: [
-          { id: 1, 计量日期: "2024-01-01", 品位差值: 0.7, 水分差值: 0.3, 重量差值: 7.3, 金属量差值: 4.6, 发货单位: "金鼎锌业", 收货单位: "富鼎翔" },
-          { id: 2, 计量日期: "2024-01-02", 品位差值: 0.8, 水分差值: 0.2, 重量差值: 3.8, 金属量差值: 3.1, 发货单位: "金鼎锌业", 收货单位: "富鼎翔" },
-        ],
-        outgoing: [
-          { id: 1, 计量日期: "2024-01-01", 品位差值: 0.7, 水分差值: 0.3, 重量差值: 7.3, 金属量差值: 4.8, 发货单位: "富鼎翔", 收货单位: "客户A", 流向: "出口" },
-          { id: 2, 计量日期: "2024-01-02", 品位差值: 0.8, 水分差值: 0.2, 重量差值: 3.8, 金属量差值: 3.0, 发货单位: "富鼎翔", 收货单位: "客户B", 流向: "内销" },
-        ],
-        production: []
-      };
+      // 调用真实API获取对比数据
+      const response = await fetch('/api/lab/comparison-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0]
+        })
+      });
 
-      setComparisonData(mockData);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const apiData = result.data || { incoming: [], outgoing: [], production: [] };
+
+      console.log('🔄 [API调用] 获取到的数据:', {
+        incoming: apiData.incoming?.length || 0,
+        outgoing: apiData.outgoing?.length || 0,
+        production: apiData.production?.length || 0
+      });
+      console.log('🔄 [API调用] 详细数据:', apiData);
+
+      // 检查数据样本
+      if (apiData.incoming?.length > 0) {
+        console.log('🔄 [API调用] 进厂数据样本:', apiData.incoming[0]);
+      }
+      if (apiData.production?.length > 0) {
+        console.log('🔄 [API调用] 生产数据样本:', apiData.production[0]);
+      }
+      if (apiData.outgoing?.length > 0) {
+        console.log('🔄 [API调用] 出厂数据样本:', apiData.outgoing[0]);
+      }
+
+      setComparisonData(apiData);
     } catch (error) {
       console.error('刷新数据对比分析数据失败:', error);
+
+      // 如果API失败，使用空数据
+      setComparisonData({ incoming: [], outgoing: [], production: [] });
     } finally {
       setIsRefreshingComparison(false);
     }
-  }, [comparisonStartDate, comparisonEndDate]);
+  }, []);
+
+  // 客户端初始化数据（避免Hydration错误）
+  useEffect(() => {
+    // 初始化时自动获取对比数据
+    refreshComparisonData();
+  }, [refreshComparisonData]);
 
   // 单个Donut图表组件 - 优化版本
   const DonutChart = ({ data, title }: {
@@ -945,7 +970,7 @@ export default function BossPage() {
         <div className="relative mb-6">
           {/* 汉堡菜单 - 左上角 */}
           <div className="absolute top-0 left-0">
-            <HamburgerMenu />
+            <BossHamburgerMenu />
           </div>
 
           {/* 右上角按钮组 */}
@@ -1163,48 +1188,32 @@ export default function BossPage() {
         </Card>
 
         {/* 数据对比分析 富金 */}
-        {isChartDataInitialized && mockComparisonChartData ? (
-          <DataVs1
-            title="数据对比分析"
-            description="金鼎 VS 富鼎翔各环节数据对比"
-            badgeText="富金"
-            badgeVariant="default"
-            badgeClassName="bg-blue-600"
-            onRefresh={refreshComparisonData}
-            isRefreshing={isRefreshingComparison}
-            comparisonData={comparisonData}
-            chartData={mockComparisonChartData}
-          />
-        ) : (
-          <Card>
-            <CardContent className="flex items-center justify-center h-[400px]">
-              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-              <span>初始化图表数据中...</span>
-            </CardContent>
-          </Card>
-        )}
+        <DataVs1
+          title="数据对比分析"
+          description="金鼎 VS 富鼎翔各环节数据对比"
+          badgeText="富金"
+          badgeVariant="default"
+          badgeClassName="bg-blue-600"
+          onRefresh={refreshComparisonData}
+          isRefreshing={isRefreshingComparison}
+          comparisonData={comparisonData}
+          chartData={{
+            incoming: { gradeAndMoisture: [] },
+            production: { originalOre: [] },
+            outgoing: { gradeAndMoisture: [], weightAndMetal: [] }
+          }} // 空的图表数据结构
+        />
 
         {/* 数据对比分析 富科 */}
-        {isChartDataInitialized && mockComparisonChartData ? (
-          <DataVs1
-            title="数据对比分析"
-            description="富科生产班样与生产质量数据对比分析"
-            badgeText="富科"
-            badgeVariant="secondary"
-            badgeClassName="bg-green-600 text-white"
-            onRefresh={refreshComparisonData}
-            isRefreshing={isRefreshingComparison}
-            comparisonData={comparisonData}
-            chartData={mockComparisonChartData}
-          />
-        ) : (
-          <Card>
-            <CardContent className="flex items-center justify-center h-[400px]">
-              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-              <span>初始化图表数据中...</span>
-            </CardContent>
-          </Card>
-        )}
+        <DataVsFuke
+          title="数据对比分析"
+          description="富科生产数据与生产质量对比分析"
+          badgeText="富科"
+          badgeVariant="secondary"
+          badgeClassName="bg-green-600 text-white"
+          onRefresh={refreshComparisonData}
+          isRefreshing={isRefreshingComparison}
+        />
 
         {/* 多页面Cosplay */}
         <Card className="mb-8">

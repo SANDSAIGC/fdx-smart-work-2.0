@@ -33,6 +33,18 @@ interface FilterPressData {
   updated_at?: string;
 }
 
+// 压滤记录汇总数据接口
+interface FilterPressSummaryData {
+  id: number;
+  日期: string;
+  板数合计: number;
+  操作员?: string;
+  班次?: string;
+  备注?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // 甜甜圈图数据接口
 interface DonutDataItem {
   name: string;
@@ -48,12 +60,14 @@ interface TrendDataItem {
   水份: number | null;
   铅品位: number | null;
   锌品位: number | null;
+  板数合计?: number | null;
 }
 
 export default function FilterPressDataDetailsPage() {
   // 状态管理
   const [isLoading, setIsLoading] = useState(false);
   const [filterData, setFilterData] = useState<FilterPressData[]>([]);
+  const [summaryData, setSummaryData] = useState<FilterPressSummaryData[]>([]);
 
   // 趋势图日期范围
   const [trendStartDate, setTrendStartDate] = useState(() => {
@@ -110,24 +124,51 @@ export default function FilterPressDataDetailsPage() {
   const fetchFilterPressData = useCallback(async (startDate: string, endDate: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/filter-press-data-details', {
+      // 获取压滤样化验记录
+      const samplesResponse = await fetch('/api/filter-press-data-details', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           startDate,
-          endDate
+          endDate,
+          dataType: 'samples'
         })
       });
 
-      const result = await response.json();
+      const samplesResult = await samplesResponse.json();
 
-      if (result.success) {
-        console.log('压滤数据获取成功:', result.data);
-        setFilterData(result.data || []);
+      if (samplesResult.success) {
+        console.log('压滤样化验数据获取成功:', samplesResult.data);
+        setFilterData(samplesResult.data || []);
       } else {
-        console.error('数据获取失败:', result.error);
+        console.error('压滤样化验数据获取失败:', samplesResult.error);
+      }
+
+      // 获取压滤记录汇总数据
+      const summaryResponse = await fetch('/api/filter-press-data-details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          dataType: 'summary'
+        })
+      });
+
+      const summaryResult = await summaryResponse.json();
+
+      if (summaryResult.success) {
+        console.log('压滤记录汇总数据获取成功:', summaryResult.data);
+        console.log('汇总数据样本:', summaryResult.data.slice(0, 3));
+        setSummaryData(summaryResult.data || []);
+      } else {
+        console.error('压滤记录汇总数据获取失败:', summaryResult.error);
+        // 如果汇总表不存在，创建模拟数据用于演示
+        setSummaryData([]);
       }
     } catch (error) {
       console.error('API调用失败:', error);
@@ -168,6 +209,10 @@ export default function FilterPressDataDetailsPage() {
     锌品位: {
       label: "锌品位",
       color: "var(--chart-3)",
+    },
+    板数合计: {
+      label: "板数合计",
+      color: "var(--chart-4)",
     },
   } satisfies ChartConfig;
 
@@ -220,6 +265,51 @@ export default function FilterPressDataDetailsPage() {
 
     return chartData;
   }, [filterData, trendStartDate, trendEndDate]);
+
+  // 处理板数合计趋势数据
+  const processBoardCountTrendData = useCallback((): TrendDataItem[] => {
+    // 筛选指定日期范围的汇总数据
+    const filteredSummaryData = summaryData.filter(item => {
+      if (!item.日期) return false;
+      return item.日期 >= trendStartDate && item.日期 <= trendEndDate;
+    });
+
+    if (filteredSummaryData.length === 0) {
+      return [];
+    }
+
+    // 按日期分组并聚合板数合计
+    const dateGroups = new Map<string, FilterPressSummaryData[]>();
+    filteredSummaryData.forEach(item => {
+      const date = item.日期;
+      if (!dateGroups.has(date)) {
+        dateGroups.set(date, []);
+      }
+      dateGroups.get(date)!.push(item);
+    });
+
+    // 转换为图表数据格式
+    const chartData: TrendDataItem[] = [];
+
+    Array.from(dateGroups.keys()).sort().forEach(date => {
+      const dayData = dateGroups.get(date);
+
+      // 聚合计算板数合计
+      const totalBoards = dayData.reduce((acc, item) => {
+        return acc + (item.板数合计 || 0);
+      }, 0);
+
+      chartData.push({
+        date,
+        水份: null,
+        铅品位: null,
+        锌品位: null,
+        板数合计: totalBoards
+      });
+    });
+
+    return chartData;
+  }, [summaryData, trendStartDate, trendEndDate]);
 
   // 处理单日详情甜甜圈数据
   const processSingleDayData = useCallback((): DonutDataItem[] => {
@@ -279,6 +369,36 @@ export default function FilterPressDataDetailsPage() {
 
     return result;
   }, [filterData, singleDate]);
+
+  // 处理单日板数合计甜甜圈数据
+  const processSingleDayBoardCountData = useCallback((): DonutDataItem[] => {
+    // 筛选指定日期的汇总数据
+    const dayData = summaryData.filter(item => {
+      if (!item.日期) return false;
+      return item.日期 === singleDate;
+    });
+
+    if (dayData.length === 0) {
+      return [];
+    }
+
+    // 聚合计算板数合计
+    const totalBoards = dayData.reduce((acc, item) => {
+      return acc + (item.板数合计 || 0);
+    }, 0);
+
+    if (totalBoards > 0) {
+      return [{
+        name: '板数合计',
+        value: totalBoards,
+        maxValue: 100, // 以100板为基准值
+        unit: '板',
+        fill: 'var(--chart-4)'
+      }];
+    }
+
+    return [];
+  }, [summaryData, singleDate]);
 
   // 处理表格数据
   const processTableData = useCallback(() => {
@@ -502,7 +622,7 @@ export default function FilterPressDataDetailsPage() {
                             y={viewBox.cy}
                             className="fill-foreground text-2xl font-bold"
                           >
-                            {data.value.toFixed(1)}
+                            {data.unit === '板' ? Math.round(data.value) : data.value.toFixed(1)}
                           </tspan>
                           <tspan
                             x={viewBox.cx}
@@ -522,7 +642,7 @@ export default function FilterPressDataDetailsPage() {
         </CardContent>
         <CardFooter className="flex-col gap-2 pt-4">
           <div className="text-sm font-medium text-center">
-            当前: {data.value.toFixed(2)}{data.unit}
+            当前值: {data.unit === '板' ? Math.round(data.value) : data.value.toFixed(2)}{data.unit}
           </div>
         </CardFooter>
       </Card>
@@ -636,13 +756,14 @@ export default function FilterPressDataDetailsPage() {
             <Carousel className="w-full">
               <CarouselContent>
                 {[
-                  { key: '水份' as keyof TrendDataItem, title: '水份趋势', unit: '%' },
-                  { key: '铅品位' as keyof TrendDataItem, title: '铅品位趋势', unit: '%' },
-                  { key: '锌品位' as keyof TrendDataItem, title: '锌品位趋势', unit: '%' }
+                  { key: '板数合计' as keyof TrendDataItem, title: '板数合计趋势', unit: '板', data: processBoardCountTrendData() },
+                  { key: '水份' as keyof TrendDataItem, title: '水份趋势', unit: '%', data: processTrendData() },
+                  { key: '铅品位' as keyof TrendDataItem, title: '铅品位趋势', unit: '%', data: processTrendData() },
+                  { key: '锌品位' as keyof TrendDataItem, title: '锌品位趋势', unit: '%', data: processTrendData() }
                 ].map((chart) => (
                   <CarouselItem key={chart.key}>
                     <TrendChartComponent
-                      data={processTrendData()}
+                      data={chart.data}
                       dataKey={chart.key}
                       title={chart.title}
                       unit={chart.unit}
@@ -690,10 +811,17 @@ export default function FilterPressDataDetailsPage() {
             </div>
 
             {/* 甜甜圈图显示 */}
-            <DonutChartComponent
-              data={processSingleDayData()}
-              title=""
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 压滤样化验数据甜甜圈图 */}
+              {processSingleDayData().map((item, index) => (
+                <DonutChart key={`filter-${index}`} data={item} standard="压滤标准" />
+              ))}
+
+              {/* 板数合计甜甜圈图 */}
+              {processSingleDayBoardCountData().map((item, index) => (
+                <DonutChart key={`board-${index}`} data={item} standard="压滤标准" />
+              ))}
+            </div>
           </CardContent>
         </Card>
 

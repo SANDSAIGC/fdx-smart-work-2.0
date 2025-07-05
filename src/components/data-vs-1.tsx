@@ -16,6 +16,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 // Chart components
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { ChartBarNegative } from "@/components/charts/ChartBarNegative";
 
 // 数据对比分析组件接口
 interface DataVs1Props {
@@ -90,6 +91,273 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+// 格式化日期范围显示
+function formatDateRange(startDate?: Date, endDate?: Date): string {
+  if (!startDate || !endDate) {
+    return "未选择日期";
+  }
+
+  const formatDate = (date: Date) => {
+    // 使用本地时间，避免时区偏移导致的日期错误
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const start = formatDate(startDate);
+  const end = formatDate(endDate);
+
+  return `${start} 至 ${end}`;
+}
+
+// 智能字段匹配函数
+function smartFieldMapping(data: any[], requestedFields: string[]): string[] {
+  if (!data || data.length === 0) return requestedFields;
+
+  const sampleItem = data[0];
+  const availableFields = Object.keys(sampleItem);
+
+  return requestedFields.map(field => {
+    // 直接匹配
+    if (availableFields.includes(field)) {
+      return field;
+    }
+
+    // 模糊匹配
+    const fuzzyMatch = availableFields.find(available => {
+      const normalizedAvailable = available.toLowerCase().replace(/[()（）\s-]/g, '');
+      const normalizedRequested = field.toLowerCase().replace(/[()（）\s-]/g, '');
+      return normalizedAvailable.includes(normalizedRequested) ||
+             normalizedRequested.includes(normalizedAvailable);
+    });
+
+    return fuzzyMatch || field;
+  });
+}
+
+// 数据聚合函数 - 按时间范围聚合数据
+function aggregateDataByTimeRange(data: any[], groupByField: string) {
+  if (!data || data.length === 0) return {};
+
+  const grouped: { [key: string]: any[] } = {};
+
+  // 按分组字段分组数据
+  data.forEach(item => {
+    const groupKey = groupByField === '班次' ? item.班次 : item.发货单位名称 || item.班次;
+    if (!grouped[groupKey]) {
+      grouped[groupKey] = [];
+    }
+    grouped[groupKey].push(item);
+  });
+
+  const aggregated: { [key: string]: any } = {};
+
+  // 对每个分组进行聚合计算
+  Object.keys(grouped).forEach(groupKey => {
+    const groupData = grouped[groupKey];
+    const aggregatedItem: any = { [groupByField]: groupKey };
+
+    // 获取所有数值字段
+    const sampleItem = groupData[0];
+    const numericFields = Object.keys(sampleItem).filter(key => {
+      const value = sampleItem[key];
+      return !isNaN(parseFloat(value)) && isFinite(value);
+    });
+
+    numericFields.forEach(field => {
+      const values = groupData.map(item => parseFloat(item[field] || 0)).filter(v => !isNaN(v));
+
+      if (values.length === 0) {
+        aggregatedItem[field] = 0;
+        return;
+      }
+
+      // 判断字段类型进行不同的聚合
+      if (field.includes('重') || field.includes('数量') || field.includes('金属') || field.includes('^M')) {
+        // 重量类数据：直接求和
+        aggregatedItem[field] = values.reduce((sum, val) => sum + val, 0);
+      } else if (field.includes('%') || field.includes('品位') || field.includes('回收率') || field.includes('水份')) {
+        // 百分比类数据：加权平均（以第一个重量字段为权重）
+        const weightField = numericFields.find(f => f.includes('重') || f.includes('湿重'));
+        if (weightField) {
+          const weights = groupData.map(item => parseFloat(item[weightField] || 0));
+          const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+          if (totalWeight > 0) {
+            const weightedSum = values.reduce((sum, val, idx) => sum + val * weights[idx], 0);
+            aggregatedItem[field] = weightedSum / totalWeight;
+          } else {
+            aggregatedItem[field] = values.reduce((sum, val) => sum + val, 0) / values.length;
+          }
+        } else {
+          // 无权重时使用简单平均
+          aggregatedItem[field] = values.reduce((sum, val) => sum + val, 0) / values.length;
+        }
+      } else {
+        // 其他数据：简单平均
+        aggregatedItem[field] = values.reduce((sum, val) => sum + val, 0) / values.length;
+      }
+    });
+
+    aggregated[groupKey] = aggregatedItem;
+  });
+
+  return aggregated;
+}
+
+// 数据差值计算函数 - 基于聚合数据的对比分析
+function calculateDifferenceData(data: any[], fields: string[], units: string[] = []) {
+  if (!data || data.length === 0) {
+    console.log('📊 [差值计算] 数据为空');
+    return [];
+  }
+
+  console.log('📊 [差值计算] 输入数据:', data.length, '条记录');
+  console.log('📊 [差值计算] 数据样本:', data[0]);
+  console.log('📊 [差值计算] 请求字段:', fields);
+
+  // 智能字段匹配
+  const mappedFields = smartFieldMapping(data, fields);
+  console.log('📊 [差值计算] 映射字段:', mappedFields);
+
+  // 对于生产班报数据，按班次聚合后对比
+  if (data.some(item => item.班次)) {
+    console.log('📊 [差值计算] 处理生产班报数据 - 时间范围聚合模式');
+
+    // 按班次聚合整个时间范围内的数据
+    const aggregatedData = aggregateDataByTimeRange(data, '班次');
+    console.log('📊 [差值计算] 聚合后数据:', aggregatedData);
+
+    const dayShiftData = aggregatedData['白班'];
+    const nightShiftData = aggregatedData['夜班'];
+
+    if (!dayShiftData || !nightShiftData) {
+      console.log('📊 [差值计算] 缺少白班或夜班聚合数据');
+      return [];
+    }
+
+    const result: any[] = [];
+
+    mappedFields.forEach((field, index) => {
+      const value1 = parseFloat(dayShiftData[field] || 0);
+      const value2 = parseFloat(nightShiftData[field] || 0);
+      const difference = value1 - value2;
+
+      // 生成唯一的参数名
+      let parameterName = field
+        .replace(/氧化锌?原矿-|氧化锌?精矿-|尾矿-|氧化矿/g, '')
+        .replace(/[()（）]/g, '')
+        .replace(/理论/g, '')
+        .replace(/t|%/g, '')
+        .trim();
+
+      // 确保参数名唯一性，添加索引后缀
+      parameterName = `${parameterName}-${index}`;
+
+      result.push({
+        parameter: parameterName,
+        value: parseFloat(difference.toFixed(3)),
+        unit: units[index] || '',
+        aggregationType: field.includes('%') || field.includes('品位') || field.includes('回收率') ? '加权平均' : '汇总',
+        originalField: field,
+        dayShiftValue: value1,
+        nightShiftValue: value2
+      });
+    });
+
+    console.log('📊 [差值计算] 生产班报聚合结果:', result.length, '条差值数据');
+    return result;
+  } else {
+    console.log('📊 [差值计算] 处理进厂/出厂数据 - 时间范围聚合模式');
+
+    // 按发货单位聚合整个时间范围内的数据
+    const aggregatedData = aggregateDataByTimeRange(data, '发货单位名称');
+    console.log('📊 [差值计算] 聚合后数据:', aggregatedData);
+
+    const units = Object.keys(aggregatedData);
+    if (units.length < 2) {
+      console.log('📊 [差值计算] 发货单位数量不足，无法进行对比');
+      return [];
+    }
+
+    // 按单位名称排序，确保一致的差值计算顺序
+    units.sort();
+    const unit1Data = aggregatedData[units[0]];
+    const unit2Data = aggregatedData[units[1]];
+
+    const result: any[] = [];
+
+    mappedFields.forEach((field, index) => {
+      const value1 = parseFloat(unit1Data[field] || 0);
+      const value2 = parseFloat(unit2Data[field] || 0);
+      const difference = value1 - value2;
+
+      // 生成唯一的参数名
+      let parameterName = field
+        .replace(/[()（）]/g, '')
+        .replace(/t|%/g, '')
+        .trim();
+
+      // 确保参数名唯一性，添加索引后缀
+      parameterName = `${parameterName}-${index}`;
+
+      result.push({
+        parameter: parameterName,
+        value: parseFloat(difference.toFixed(3)),
+        unit: units[index] || '',
+        aggregationType: field.includes('%') || field.includes('品位') || field.includes('水份') ? '加权平均' : '汇总',
+        originalField: field,
+        unit1: units[0],
+        unit2: units[1],
+        unit1Value: value1,
+        unit2Value: value2
+      });
+    });
+
+    console.log('📊 [差值计算] 进厂/出厂聚合结果:', result.length, '条差值数据');
+    return result;
+  }
+}
+
+// 自定义图例组件
+function CustomLegend({ lines }: { lines: { dataKey: string }[] }) {
+  // 预定义的颜色映射
+  const colorMap: Record<string, string> = {
+    'jinding_grade': 'hsl(var(--chart-1))',
+    'fudingxiang_grade': 'hsl(var(--chart-2))',
+    'jinding_moisture': 'hsl(var(--chart-3))',
+    'fudingxiang_moisture': 'hsl(var(--chart-4))',
+    'jinding_day_moisture': 'hsl(var(--chart-1))',
+    'jinding_night_moisture': 'hsl(var(--chart-2))',
+    'fudingxiang_day_moisture': 'hsl(var(--chart-3))',
+    'fudingxiang_night_moisture': 'hsl(var(--chart-4))',
+    'jinding_weight': 'hsl(var(--chart-1))',
+    'fudingxiang_weight': 'hsl(var(--chart-2))',
+    'internal_grade': 'hsl(var(--chart-5))',
+    'internal_moisture': 'hsl(var(--chart-5))',
+  };
+
+  return (
+    <div className="flex flex-wrap justify-center gap-4 mt-6 px-4">
+      {lines.map((line, index) => {
+        const config = chartConfig[line.dataKey as keyof typeof chartConfig];
+        const color = colorMap[line.dataKey] || `hsl(var(--chart-${index + 1}))`;
+        return (
+          <div key={index} className="flex items-center gap-2">
+            <div
+              className="w-3 h-0.5 rounded"
+              style={{ backgroundColor: color }}
+            />
+            <span className="text-xs text-muted-foreground">
+              {config?.label || line.dataKey}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // 图表组件
 function ComparisonChart({
   data,
@@ -111,13 +379,14 @@ function ComparisonChart({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
+        <ChartContainer config={chartConfig} className="comparison-chart-container">
           <LineChart
             accessibilityLayer
             data={data}
             margin={{
               left: 12,
               right: 12,
+              bottom: 60, // 增加底部间距，防止标签重叠
             }}
           >
             <CartesianGrid vertical={false} />
@@ -144,10 +413,13 @@ function ComparisonChart({
                 dot={false}
               />
             ))}
-            <Legend />
           </LineChart>
         </ChartContainer>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+
+        {/* 自定义图例 */}
+        <CustomLegend lines={lines} />
+
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-4">
           <span>{trendText}</span>
         </div>
       </CardContent>
@@ -327,37 +599,23 @@ export default function DataVs1({
 
           <TabsContent value="incoming" className="mt-4">
             <div className="space-y-4">
-              <h3 className="text-sm font-medium">进厂原矿数据趋势对比</h3>
-              <Carousel className="w-full">
-                <CarouselContent>
-                  <CarouselItem>
-                    <ComparisonChart
-                      data={chartData.incoming.gradeAndMoisture}
-                      title="品位对比"
-                      description="金鼎 VS 富鼎翔进厂原矿品位对比"
-                      lines={[
-                        { dataKey: "jinding_grade" },
-                        { dataKey: "fudingxiang_grade" },
-                      ]}
-                      trendText={generateSingleTrendText(chartData.incoming.gradeAndMoisture, "jinding_grade", "fudingxiang_grade", true)}
-                    />
-                  </CarouselItem>
-                  <CarouselItem>
-                    <ComparisonChart
-                      data={chartData.incoming.gradeAndMoisture}
-                      title="水份对比"
-                      description="金鼎 VS 富鼎翔进厂原矿水份对比"
-                      lines={[
-                        { dataKey: "jinding_moisture" },
-                        { dataKey: "fudingxiang_moisture" },
-                      ]}
-                      trendText={generateSingleTrendText(chartData.incoming.gradeAndMoisture, "jinding_moisture", "fudingxiang_moisture", true)}
-                    />
-                  </CarouselItem>
-                </CarouselContent>
-                <CarouselPrevious />
-                <CarouselNext />
-              </Carousel>
+              <h3 className="text-sm font-medium">进厂原矿数据差值</h3>
+
+              {/* 进厂原矿数据差值图表 */}
+              <ChartBarNegative
+                data={calculateDifferenceData(
+                  comparisonData.incoming,
+                  ['湿重(t)', '水份(%)', '干重(t)', 'Pb^M', 'Zn^M'],
+                  ['t', '%', 't', 't', 't']
+                )}
+                title="进厂原矿数据差值对比"
+                description={`考核日期：${formatDateRange(comparisonStartDate, comparisonEndDate)}`}
+                footerText="正值表示第一单位聚合数据较高，负值表示第二单位聚合数据较高"
+                trendText="基于时间范围聚合的差值对比"
+                height={280}
+                compact={true}
+                className="w-full"
+              />
 
               {/* 进厂数据表格 */}
               <div className="mt-6">
@@ -367,10 +625,11 @@ export default function DataVs1({
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-center">日期</TableHead>
-                        <TableHead className="text-center">品位差值(%)</TableHead>
-                        <TableHead className="text-center">水分差值(%)</TableHead>
-                        <TableHead className="text-center">重量差值(t)</TableHead>
-                        <TableHead className="text-center">金属量差值(t)</TableHead>
+                        <TableHead className="text-center">湿重(t)</TableHead>
+                        <TableHead className="text-center">水份(%)</TableHead>
+                        <TableHead className="text-center">干重(t)</TableHead>
+                        <TableHead className="text-center">Pb^M(t)</TableHead>
+                        <TableHead className="text-center">Zn^M(t)</TableHead>
                         <TableHead className="text-center">发货单位</TableHead>
                         <TableHead className="text-center">收货单位</TableHead>
                       </TableRow>
@@ -383,28 +642,31 @@ export default function DataVs1({
                               {item.计量日期 || '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.品位差值 !== undefined ? `${item.品位差值}%` : '--'}
+                              {item['湿重(t)'] !== undefined ? `${item['湿重(t)']}t` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.水分差值 !== undefined ? `${item.水分差值}%` : '--'}
+                              {item['水份(%)'] !== undefined ? `${item['水份(%)']}%` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.重量差值 !== undefined ? `${item.重量差值}t` : '--'}
+                              {item['干重(t)'] !== undefined ? `${item['干重(t)']}t` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.金属量差值 !== undefined ? `${item.金属量差值}t` : '--'}
+                              {item['Pb^M'] !== undefined ? `${item['Pb^M']}t` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.发货单位 || '--'}
+                              {item['Zn^M'] !== undefined ? `${item['Zn^M']}t` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.收货单位 || '--'}
+                              {item.发货单位名称 || '--'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {item.收货单位名称 || '--'}
                             </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground py-4">
+                          <TableCell colSpan={8} className="text-center text-muted-foreground py-4">
                             暂无进厂原矿对比数据
                           </TableCell>
                         </TableRow>
@@ -418,21 +680,78 @@ export default function DataVs1({
 
           <TabsContent value="production" className="mt-4">
             <div className="space-y-4">
-              <h3 className="text-sm font-medium">生产班样数据趋势对比</h3>
+              <h3 className="text-sm font-medium">生产班样数据差值</h3>
               <Carousel className="w-full">
                 <CarouselContent>
+                  {/* 回收率数据 */}
                   <CarouselItem>
-                    <ComparisonChart
-                      data={chartData.production.originalOre}
-                      title="原矿水份%对比"
-                      description="金鼎白班/夜班 VS 富鼎翔白班/夜班原矿水份对比"
-                      lines={[
-                        { dataKey: "jinding_day_moisture" },
-                        { dataKey: "jinding_night_moisture" },
-                        { dataKey: "fudingxiang_day_moisture" },
-                        { dataKey: "fudingxiang_night_moisture" },
-                      ]}
-                      trendText={generateSingleTrendText(chartData.production.originalOre, "jinding_day_moisture", "fudingxiang_day_moisture", true)}
+                    <ChartBarNegative
+                      data={calculateDifferenceData(
+                        comparisonData.production,
+                        ['氧化矿Zn理论回收率（%）'],
+                        ['%']
+                      )}
+                      title="回收率数据差值"
+                      description={`考核日期：${formatDateRange(comparisonStartDate, comparisonEndDate)}`}
+                      footerText="正值表示第一单位聚合数据较高，负值表示第二单位聚合数据较高"
+                      trendText="基于时间范围聚合的回收率差值"
+                      height={250}
+                      compact={true}
+                      className="w-full"
+                    />
+                  </CarouselItem>
+
+                  {/* 原矿数据 */}
+                  <CarouselItem>
+                    <ChartBarNegative
+                      data={calculateDifferenceData(
+                        comparisonData.production,
+                        ['氧化锌原矿-水份（%）', '氧化锌原矿-Pb全品位（%）', '氧化锌原矿-Zn全品位（%）', '氧化锌原矿-全金属Pb（t）', '氧化锌原矿-全金属Zn（t）'],
+                        ['%', '%', '%', 't', 't']
+                      )}
+                      title="原矿数据差值"
+                      description={`考核日期：${formatDateRange(comparisonStartDate, comparisonEndDate)}`}
+                      footerText="正值表示第一单位聚合数据较高，负值表示第二单位聚合数据较高"
+                      trendText="基于时间范围聚合的原矿数据差值"
+                      height={250}
+                      compact={true}
+                      className="w-full"
+                    />
+                  </CarouselItem>
+
+                  {/* 精矿数据 */}
+                  <CarouselItem>
+                    <ChartBarNegative
+                      data={calculateDifferenceData(
+                        comparisonData.production,
+                        ['氧化锌精矿-数量（t）', '氧化锌精矿-Pb品位（%）', '氧化锌精矿-Zn品位（%）', '氧化锌精矿-Pb金属量（t）', '氧化锌精矿-Zn金属量（t）'],
+                        ['t', '%', '%', 't', 't']
+                      )}
+                      title="精矿数据差值"
+                      description={`考核日期：${formatDateRange(comparisonStartDate, comparisonEndDate)}`}
+                      footerText="正值表示第一单位聚合数据较高，负值表示第二单位聚合数据较高"
+                      trendText="基于时间范围聚合的精矿数据差值"
+                      height={250}
+                      compact={true}
+                      className="w-full"
+                    />
+                  </CarouselItem>
+
+                  {/* 尾矿数据 */}
+                  <CarouselItem>
+                    <ChartBarNegative
+                      data={calculateDifferenceData(
+                        comparisonData.production,
+                        ['尾矿-数量（t）', '尾矿-Pb全品位（%）', '尾矿-Zn全品位（%）', '尾矿-Pb全金属（t）', '尾矿-Zn全金属（t）'],
+                        ['t', '%', '%', 't', 't']
+                      )}
+                      title="尾矿数据差值"
+                      description={`考核日期：${formatDateRange(comparisonStartDate, comparisonEndDate)}`}
+                      footerText="正值表示第一单位聚合数据较高，负值表示第二单位聚合数据较高"
+                      trendText="基于时间范围聚合的尾矿数据差值"
+                      height={250}
+                      compact={true}
+                      className="w-full"
                     />
                   </CarouselItem>
                 </CarouselContent>
@@ -449,10 +768,12 @@ export default function DataVs1({
                       <TableRow>
                         <TableHead className="text-center">日期</TableHead>
                         <TableHead className="text-center">班次</TableHead>
-                        <TableHead className="text-center">原矿水分差值(%)</TableHead>
-                        <TableHead className="text-center">原矿Zn品位差值(%)</TableHead>
-                        <TableHead className="text-center">精矿Zn品位差值(%)</TableHead>
-                        <TableHead className="text-center">Zn回收率差值(%)</TableHead>
+                        <TableHead className="text-center">原矿水份(%)</TableHead>
+                        <TableHead className="text-center">原矿Pb品位(%)</TableHead>
+                        <TableHead className="text-center">原矿Zn品位(%)</TableHead>
+                        <TableHead className="text-center">精矿Pb品位(%)</TableHead>
+                        <TableHead className="text-center">精矿Zn品位(%)</TableHead>
+                        <TableHead className="text-center">Zn回收率(%)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -466,22 +787,28 @@ export default function DataVs1({
                               {item.班次 || '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.原矿水分差值 !== undefined ? `${item.原矿水分差值}%` : '--'}
+                              {item['氧化锌原矿-水份（%）'] !== undefined ? `${item['氧化锌原矿-水份（%）']}%` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.原矿Zn品位差值 !== undefined ? `${item.原矿Zn品位差值}%` : '--'}
+                              {item['氧化锌原矿-Pb全品位（%）'] !== undefined ? `${item['氧化锌原矿-Pb全品位（%）']}%` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.精矿Zn品位差值 !== undefined ? `${item.精矿Zn品位差值}%` : '--'}
+                              {item['氧化锌原矿-Zn全品位（%）'] !== undefined ? `${item['氧化锌原矿-Zn全品位（%）']}%` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.Zn回收率差值 !== undefined ? `${item.Zn回收率差值}%` : '--'}
+                              {item['氧化锌精矿-Pb品位（%）'] !== undefined ? `${item['氧化锌精矿-Pb品位（%）']}%` : '--'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {item['氧化锌精矿-Zn品位（%）'] !== undefined ? `${item['氧化锌精矿-Zn品位（%）']}%` : '--'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {item['氧化矿Zn理论回收率（%）'] !== undefined ? `${item['氧化矿Zn理论回收率（%）']}%` : '--'}
                             </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
+                          <TableCell colSpan={8} className="text-center text-muted-foreground py-4">
                             暂无生产班样对比数据
                           </TableCell>
                         </TableRow>
@@ -495,51 +822,23 @@ export default function DataVs1({
 
           <TabsContent value="outgoing" className="mt-4">
             <div className="space-y-4">
-              <h3 className="text-sm font-medium">出厂精矿数据趋势对比</h3>
-              <Carousel className="w-full">
-                <CarouselContent>
-                  <CarouselItem>
-                    <ComparisonChart
-                      data={chartData.outgoing.gradeAndMoisture}
-                      title="品位%对比"
-                      description="金鼎 VS 富鼎翔 VS 内部取样品位对比"
-                      lines={[
-                        { dataKey: "jinding_grade" },
-                        { dataKey: "fudingxiang_grade" },
-                        { dataKey: "internal_grade" },
-                      ]}
-                      trendText={generateSingleTrendText(chartData.outgoing.gradeAndMoisture, "jinding_grade", "fudingxiang_grade", true)}
-                    />
-                  </CarouselItem>
-                  <CarouselItem>
-                    <ComparisonChart
-                      data={chartData.outgoing.gradeAndMoisture}
-                      title="水份%对比"
-                      description="金鼎 VS 富鼎翔 VS 内部取样水份对比"
-                      lines={[
-                        { dataKey: "jinding_moisture" },
-                        { dataKey: "fudingxiang_moisture" },
-                        { dataKey: "internal_moisture" },
-                      ]}
-                      trendText={generateSingleTrendText(chartData.outgoing.gradeAndMoisture, "jinding_moisture", "fudingxiang_moisture", true)}
-                    />
-                  </CarouselItem>
-                  <CarouselItem>
-                    <ComparisonChart
-                      data={chartData.outgoing.weightAndMetal}
-                      title="湿重t对比"
-                      description="金鼎 VS 富鼎翔出厂精矿湿重对比"
-                      lines={[
-                        { dataKey: "jinding_weight" },
-                        { dataKey: "fudingxiang_weight" },
-                      ]}
-                      trendText={generateSingleTrendText(chartData.outgoing.weightAndMetal, "jinding_weight", "fudingxiang_weight", false)}
-                    />
-                  </CarouselItem>
-                </CarouselContent>
-                <CarouselPrevious />
-                <CarouselNext />
-              </Carousel>
+              <h3 className="text-sm font-medium">出厂精矿数据差值</h3>
+
+              {/* 出厂精矿数据差值图表 */}
+              <ChartBarNegative
+                data={calculateDifferenceData(
+                  comparisonData.outgoing,
+                  ['湿重(t)', '水份(%)', '干重(t)', 'Pb^M', 'Zn^M'],
+                  ['t', '%', 't', 't', 't']
+                )}
+                title="出厂精矿数据差值对比"
+                description={`考核日期：${formatDateRange(comparisonStartDate, comparisonEndDate)}`}
+                footerText="正值表示第一单位聚合数据较高，负值表示第二单位聚合数据较高"
+                trendText="基于时间范围聚合的差值对比"
+                height={280}
+                compact={true}
+                className="w-full"
+              />
 
               {/* 出厂数据表格 */}
               <div className="mt-6">
@@ -549,10 +848,11 @@ export default function DataVs1({
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-center">日期</TableHead>
-                        <TableHead className="text-center">品位差值(%)</TableHead>
-                        <TableHead className="text-center">水分差值(%)</TableHead>
-                        <TableHead className="text-center">重量差值(t)</TableHead>
-                        <TableHead className="text-center">金属量差值(t)</TableHead>
+                        <TableHead className="text-center">湿重(t)</TableHead>
+                        <TableHead className="text-center">水份(%)</TableHead>
+                        <TableHead className="text-center">干重(t)</TableHead>
+                        <TableHead className="text-center">Pb^M(t)</TableHead>
+                        <TableHead className="text-center">Zn^M(t)</TableHead>
                         <TableHead className="text-center">发货单位</TableHead>
                         <TableHead className="text-center">收货单位</TableHead>
                         <TableHead className="text-center">流向</TableHead>
@@ -566,22 +866,25 @@ export default function DataVs1({
                               {item.计量日期 || '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.品位差值 !== undefined ? `${item.品位差值}%` : '--'}
+                              {item['湿重(t)'] !== undefined ? `${item['湿重(t)']}t` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.水分差值 !== undefined ? `${item.水分差值}%` : '--'}
+                              {item['水份(%)'] !== undefined ? `${item['水份(%)']}%` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.重量差值 !== undefined ? `${item.重量差值}t` : '--'}
+                              {item['干重(t)'] !== undefined ? `${item['干重(t)']}t` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.金属量差值 !== undefined ? `${item.金属量差值}t` : '--'}
+                              {item['Pb^M'] !== undefined ? `${item['Pb^M']}t` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.发货单位 || '--'}
+                              {item['Zn^M'] !== undefined ? `${item['Zn^M']}t` : '--'}
                             </TableCell>
                             <TableCell className="text-center">
-                              {item.收货单位 || '--'}
+                              {item.发货单位名称 || '--'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {item.收货单位名称 || '--'}
                             </TableCell>
                             <TableCell className="text-center">
                               {item.流向 || '--'}
@@ -590,7 +893,7 @@ export default function DataVs1({
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground py-4">
+                          <TableCell colSpan={9} className="text-center text-muted-foreground py-4">
                             暂无出厂精矿对比数据
                           </TableCell>
                         </TableRow>

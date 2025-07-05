@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { startDate, endDate } = await request.json();
+    const { startDate, endDate, dataType } = await request.json();
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('压滤数据详情API调用:', { startDate, endDate });
+    console.log('压滤数据详情API调用:', { startDate, endDate, dataType });
 
     if (!startDate || !endDate) {
       return NextResponse.json({
@@ -23,15 +23,26 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 构建查询URL
-    const tableName = '压滤样化验记录';
-    let queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}?select=*`;
+    // 根据数据类型选择不同的表和字段
+    let tableName: string;
+    let dateField: string;
+    let queryUrl: string;
 
-    // 添加日期范围筛选 - 使用开始时间字段
-    queryUrl += `&开始时间=gte.${startDate}&开始时间=lte.${endDate}T23:59:59.999Z`;
-
-    // 添加排序
-    queryUrl += `&order=开始时间.desc`;
+    if (dataType === 'summary') {
+      // 查询压滤记录汇总表
+      tableName = '压滤记录汇总';
+      dateField = '日期';
+      queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}?select=*`;
+      queryUrl += `&${dateField}=gte.${startDate}&${dateField}=lte.${endDate}`;
+      queryUrl += `&order=${dateField}.desc`;
+    } else {
+      // 查询压滤样化验记录表（默认）
+      tableName = '压滤样化验记录';
+      dateField = '开始时间';
+      queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}?select=*`;
+      queryUrl += `&${dateField}=gte.${startDate}&${dateField}=lte.${endDate}T23:59:59.999Z`;
+      queryUrl += `&order=${dateField}.desc`;
+    }
 
     console.log('查询URL:', queryUrl);
 
@@ -61,6 +72,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: filterPressData || [],
+      dataType: dataType || 'samples',
+      tableName,
       message: `成功获取 ${filterPressData?.length || 0} 条压滤数据记录`
     });
 

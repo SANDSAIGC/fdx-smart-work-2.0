@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import {
   RefreshCw, Download, Eye, ChevronLeft, ChevronRight,
-  TrendingUp, CheckCircle, AlertTriangle, Activity
+  TrendingUp, CheckCircle, AlertTriangle, Activity, Target, AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Header2 } from "@/components/headers";
 import { Footer } from "@/components/ui/footer";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, ReferenceLine, ReferenceArea } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, LabelList, Label as RechartsLabel } from 'recharts';
 
@@ -60,6 +60,42 @@ interface TrendDataItem {
   科力二号壶浓度: number | null;
   科力二号壶细度: number | null;
 }
+
+// 浓细度标准配置接口
+interface ConcentrationStandard {
+  min: number;
+  max: number;
+  unit: string;
+  name: string;
+}
+
+// 达标状态类型
+type ComplianceStatus = 'compliant' | 'warning' | 'non-compliant';
+
+// 达标状态结果接口
+interface ComplianceResult {
+  status: ComplianceStatus;
+  deviation: number; // 偏差百分比
+  message: string;
+}
+
+// 浓细度标准配置
+const CONCENTRATION_STANDARDS = {
+  // 一号磨标准（富鼎翔）
+  fdx: {
+    进料流量: { min: 30, max: 40, unit: 't/h', name: '进料流量' },
+    一号壶浓度: { min: 70, max: 75, unit: '%', name: '作业浓度（1号排矿口浓度）' },
+    二号壶浓度: { min: 45, max: 50, unit: '%', name: '螺旋分级机溢流浓度' },
+    二号壶细度: { min: 60, max: 65, unit: '%', name: '细度（-200目占比）' }
+  },
+  // 二号磨标准（科力）
+  kl: {
+    进料流量: { min: 30, max: 40, unit: 't/h', name: '进料流量' },
+    一号壶浓度: { min: 65, max: 70, unit: '%', name: '作业浓度（排矿口浓度）' },
+    二号壶浓度: { min: 35, max: 40, unit: '%', name: '旋流器溢流浓度' },
+    二号壶细度: { min: 80, max: 85, unit: '%', name: '细度（旋流器溢流细度-200目占比）' }
+  }
+};
 
 export default function ConcentrationFinenessMonitorPage() {
   // 数据状态
@@ -313,11 +349,170 @@ export default function ConcentrationFinenessMonitorPage() {
     return result;
   }, [fdxData, klData]);
 
-  // 获取浓度状态
-  const getConcentrationStatus = (value: number) => {
-    if (value >= 60 && value <= 70) return 'normal';
-    if (value >= 55 && value <= 75) return 'warning';
-    return 'alarm';
+  // 获取达标状态和偏差分析
+  const getComplianceAnalysis = useCallback((
+    value: number | undefined | null,
+    parameterType: '进料流量' | '一号壶浓度' | '二号壶浓度' | '二号壶细度',
+    dataSource: 'fdx' | 'kl'
+  ): ComplianceResult | null => {
+    if (value === undefined || value === null) return null;
+
+    // 进料流量特殊处理：分级标准
+    if (parameterType === '进料流量') {
+      let status: ComplianceStatus;
+      let deviation: number = 0;
+      let message: string;
+
+      if (value >= 20 && value < 30) {
+        status = 'non-compliant';
+        message = '低';
+      } else if (value >= 30 && value <= 40) {
+        status = 'compliant';
+        message = '中';
+      } else if (value > 40 && value <= 50) {
+        status = 'warning';
+        message = '高';
+      } else if (value < 20) {
+        status = 'non-compliant';
+        message = '极低';
+      } else {
+        status = 'non-compliant';
+        message = '极高';
+      }
+
+      return { status, deviation, message };
+    }
+
+    // 其他参数按原有逻辑处理
+    const standard = CONCENTRATION_STANDARDS[dataSource][parameterType];
+    const { min, max } = standard;
+
+    let status: ComplianceStatus;
+    let deviation: number;
+    let message: string;
+
+    if (value >= min && value <= max) {
+      // 达标
+      status = 'compliant';
+      deviation = 0;
+      message = '达标';
+    } else if (value < min) {
+      // 低于标准
+      const warningThreshold = min - (max - min) * 0.1; // 10%容差
+      if (value >= warningThreshold) {
+        status = 'warning';
+        deviation = ((min - value) / min) * 100;
+        message = `偏低 ${deviation.toFixed(1)}%`;
+      } else {
+        status = 'non-compliant';
+        deviation = ((min - value) / min) * 100;
+        message = `严重偏低 ${deviation.toFixed(1)}%`;
+      }
+    } else {
+      // 高于标准
+      const warningThreshold = max + (max - min) * 0.1; // 10%容差
+      if (value <= warningThreshold) {
+        status = 'warning';
+        deviation = ((value - max) / max) * 100;
+        message = `偏高 ${deviation.toFixed(1)}%`;
+      } else {
+        status = 'non-compliant';
+        deviation = ((value - max) / max) * 100;
+        message = `严重偏高 ${deviation.toFixed(1)}%`;
+      }
+    }
+
+    return { status, deviation, message };
+  }, []);
+
+  // 状态指示器组件
+  const ComplianceIndicator = ({
+    value,
+    parameterType,
+    dataSource,
+    showStandard = false
+  }: {
+    value: number | undefined | null;
+    parameterType: '进料流量' | '一号壶浓度' | '二号壶浓度' | '二号壶细度';
+    dataSource: 'fdx' | 'kl';
+    showStandard?: boolean;
+  }) => {
+    const analysis = getComplianceAnalysis(value, parameterType, dataSource);
+
+    if (!analysis) {
+      return (
+        <div className="flex flex-col items-center gap-1">
+          <Badge variant="secondary" className="text-xs">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            无数据
+          </Badge>
+          {showStandard && parameterType !== '进料流量' && (
+            <div className="text-xs text-muted-foreground text-center">
+              {(() => {
+                const standard = CONCENTRATION_STANDARDS[dataSource][parameterType];
+                return `标准: ${standard.min}-${standard.max}${standard.unit}`;
+              })()}
+            </div>
+          )}
+          {showStandard && parameterType === '进料流量' && (
+            <div className="text-xs text-muted-foreground text-center">
+              20-30低；30-40中；40-50高
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const getStatusColor = (status: ComplianceStatus) => {
+      switch (status) {
+        case 'compliant':
+          return 'bg-green-100 text-green-800 border-green-200';
+        case 'warning':
+          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        case 'non-compliant':
+          return 'bg-red-100 text-red-800 border-red-200';
+        default:
+          return 'bg-gray-100 text-gray-800 border-gray-200';
+      }
+    };
+
+    const getStatusIcon = (status: ComplianceStatus) => {
+      switch (status) {
+        case 'compliant':
+          return <CheckCircle className="h-3 w-3 mr-1" />;
+        case 'warning':
+          return <AlertTriangle className="h-3 w-3 mr-1" />;
+        case 'non-compliant':
+          return <Target className="h-3 w-3 mr-1" />;
+        default:
+          return <AlertCircle className="h-3 w-3 mr-1" />;
+      }
+    };
+
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <Badge
+          variant="outline"
+          className={`text-xs border ${getStatusColor(analysis.status)}`}
+        >
+          {getStatusIcon(analysis.status)}
+          {analysis.message}
+        </Badge>
+        {showStandard && parameterType !== '进料流量' && (
+          <div className="text-xs text-muted-foreground text-center">
+            {(() => {
+              const standard = CONCENTRATION_STANDARDS[dataSource][parameterType];
+              return `标准: ${standard.min}-${standard.max}${standard.unit}`;
+            })()}
+          </div>
+        )}
+        {showStandard && parameterType === '进料流量' && (
+          <div className="text-xs text-muted-foreground text-center">
+            20-30低；30-40中；40-50高
+          </div>
+        )}
+      </div>
+    );
   };
 
   // 处理表格数据
@@ -381,26 +576,47 @@ export default function ConcentrationFinenessMonitorPage() {
     document.body.removeChild(link);
   }, [activeTabSummary, processTableData]);
 
-  // 获取达标状态
-  const getComplianceStatus = (value: number | undefined, type: 'concentration' | 'fineness') => {
+  // 获取达标状态（保持向后兼容，但使用新的标准）
+  const getComplianceStatus = (
+    value: number | undefined,
+    parameterType: '一号壶浓度' | '二号壶浓度' | '二号壶细度',
+    dataSource: 'fdx' | 'kl'
+  ) => {
     if (value === undefined || value === null) return null;
 
-    let isCompliant = false;
-    if (type === 'concentration') {
-      isCompliant = value >= 60 && value <= 80; // 浓度达标范围60-80%
-    } else {
-      isCompliant = value >= 70 && value <= 90; // 细度达标范围70-90%
-    }
+    const analysis = getComplianceAnalysis(value, parameterType, dataSource);
+    if (!analysis) return null;
 
-    return isCompliant ? (
-      <Badge variant="default" className="bg-green-100 text-green-800">
-        <CheckCircle className="h-3 w-3 mr-1" />
-        达标
-      </Badge>
-    ) : (
-      <Badge variant="destructive" className="bg-red-100 text-red-800">
-        <AlertTriangle className="h-3 w-3 mr-1" />
-        超标
+    const getStatusColor = (status: ComplianceStatus) => {
+      switch (status) {
+        case 'compliant':
+          return 'bg-green-100 text-green-800';
+        case 'warning':
+          return 'bg-yellow-100 text-yellow-800';
+        case 'non-compliant':
+          return 'bg-red-100 text-red-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    const getStatusIcon = (status: ComplianceStatus) => {
+      switch (status) {
+        case 'compliant':
+          return <CheckCircle className="h-3 w-3 mr-1" />;
+        case 'warning':
+          return <AlertTriangle className="h-3 w-3 mr-1" />;
+        case 'non-compliant':
+          return <Target className="h-3 w-3 mr-1" />;
+        default:
+          return <AlertCircle className="h-3 w-3 mr-1" />;
+      }
+    };
+
+    return (
+      <Badge variant="outline" className={getStatusColor(analysis.status)}>
+        {getStatusIcon(analysis.status)}
+        {analysis.message}
       </Badge>
     );
   };
@@ -433,8 +649,20 @@ export default function ConcentrationFinenessMonitorPage() {
     return `${format(updateDate, 'MM-dd')} ${updateTime}`;
   }, [fdxData, klData]);
 
-  // 甜甜圈图组件 - 与进厂原矿详情页面保持一致
-  const DonutChart = ({ data, standard = "浓细度标准" }: { data: DonutDataItem; standard?: string }) => {
+  // 甜甜圈图组件 - 增强版，支持标准范围显示
+  const DonutChart = ({
+    data,
+    standard = "浓细度标准",
+    showStandardRange = false,
+    dataSource,
+    parameterType
+  }: {
+    data: DonutDataItem;
+    standard?: string;
+    showStandardRange?: boolean;
+    dataSource?: 'fdx' | 'kl';
+    parameterType?: '进料流量' | '一号壶浓度' | '二号壶浓度' | '二号壶细度';
+  }) => {
     // 计算百分比和图表数据
     const chartData = React.useMemo(() => {
       const currentPercentage = Math.min((data.value / data.maxValue) * 100, 100);
@@ -483,15 +711,15 @@ export default function ConcentrationFinenessMonitorPage() {
     };
 
     return (
-      <Card className="flex flex-col">
-        <CardHeader className="items-center pb-0">
-          <CardTitle className="text-sm">{data.name}</CardTitle>
-          <CardDescription className="text-xs">按照{standard}</CardDescription>
+      <Card className="flex flex-col h-full">
+        <CardHeader className="items-center pb-2">
+          <CardTitle className="text-sm text-center">{data.name}</CardTitle>
+          <CardDescription className="text-xs text-center">按照{standard}</CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 pb-0">
+        <CardContent className="flex-1 pb-2">
           <ChartContainer
             config={donutConfig}
-            className="mx-auto aspect-square max-h-[200px]"
+            className="mx-auto aspect-square max-h-[180px]"
           >
             <PieChart>
               <ChartTooltip
@@ -518,13 +746,13 @@ export default function ConcentrationFinenessMonitorPage() {
                           <tspan
                             x={viewBox.cx}
                             y={viewBox.cy}
-                            className="fill-foreground text-2xl font-bold"
+                            className="fill-foreground text-xl font-bold"
                           >
                             {data.value.toFixed(1)}
                           </tspan>
                           <tspan
                             x={viewBox.cx}
-                            y={(viewBox.cy || 0) + 20}
+                            y={(viewBox.cy || 0) + 18}
                             className="fill-muted-foreground text-sm"
                           >
                             {data.unit}
@@ -538,10 +766,23 @@ export default function ConcentrationFinenessMonitorPage() {
             </PieChart>
           </ChartContainer>
         </CardContent>
-        <CardFooter className="flex-col gap-2 pt-4">
+        <CardFooter className="flex-col gap-1 pt-2">
           <div className="text-sm font-medium text-center">
             当前: {data.value.toFixed(2)}{data.unit}
           </div>
+          {showStandardRange && dataSource && parameterType && parameterType !== '进料流量' && (
+            <div className="text-xs text-muted-foreground text-center">
+              {(() => {
+                const standardRange = CONCENTRATION_STANDARDS[dataSource][parameterType];
+                return `标准: ${standardRange.min}-${standardRange.max}${standardRange.unit}`;
+              })()}
+            </div>
+          )}
+          {showStandardRange && parameterType === '进料流量' && (
+            <div className="text-xs text-muted-foreground text-center">
+              20-30低；30-40中；40-50高
+            </div>
+          )}
         </CardFooter>
       </Card>
     );
@@ -637,11 +878,42 @@ export default function ConcentrationFinenessMonitorPage() {
                           tickLine={false}
                           axisLine={false}
                           tickMargin={8}
+                          domain={[0, 100]}
                         />
                         <Tooltip
                           content={<ChartTooltipContent />}
                         />
                         <Legend />
+
+                        {/* 标准范围参考区域 */}
+                        <ReferenceArea
+                          y1={CONCENTRATION_STANDARDS.fdx.一号壶浓度.min}
+                          y2={CONCENTRATION_STANDARDS.fdx.一号壶浓度.max}
+                          fill="var(--chart-1)"
+                          fillOpacity={0.1}
+                          stroke="var(--chart-1)"
+                          strokeOpacity={0.3}
+                          strokeDasharray="2 2"
+                        />
+                        <ReferenceArea
+                          y1={CONCENTRATION_STANDARDS.fdx.二号壶浓度.min}
+                          y2={CONCENTRATION_STANDARDS.fdx.二号壶浓度.max}
+                          fill="var(--chart-2)"
+                          fillOpacity={0.1}
+                          stroke="var(--chart-2)"
+                          strokeOpacity={0.3}
+                          strokeDasharray="2 2"
+                        />
+                        <ReferenceArea
+                          y1={CONCENTRATION_STANDARDS.fdx.二号壶细度.min}
+                          y2={CONCENTRATION_STANDARDS.fdx.二号壶细度.max}
+                          fill="var(--chart-3)"
+                          fillOpacity={0.1}
+                          stroke="var(--chart-3)"
+                          strokeOpacity={0.3}
+                          strokeDasharray="2 2"
+                        />
+
                         <Line
                           dataKey="富鼎翔一号壶浓度"
                           type="monotone"
@@ -703,11 +975,42 @@ export default function ConcentrationFinenessMonitorPage() {
                           tickLine={false}
                           axisLine={false}
                           tickMargin={8}
+                          domain={[0, 100]}
                         />
                         <Tooltip
                           content={<ChartTooltipContent />}
                         />
                         <Legend />
+
+                        {/* 标准范围参考区域 */}
+                        <ReferenceArea
+                          y1={CONCENTRATION_STANDARDS.kl.一号壶浓度.min}
+                          y2={CONCENTRATION_STANDARDS.kl.一号壶浓度.max}
+                          fill="var(--chart-4)"
+                          fillOpacity={0.1}
+                          stroke="var(--chart-4)"
+                          strokeOpacity={0.3}
+                          strokeDasharray="2 2"
+                        />
+                        <ReferenceArea
+                          y1={CONCENTRATION_STANDARDS.kl.二号壶浓度.min}
+                          y2={CONCENTRATION_STANDARDS.kl.二号壶浓度.max}
+                          fill="var(--chart-5)"
+                          fillOpacity={0.1}
+                          stroke="var(--chart-5)"
+                          strokeOpacity={0.3}
+                          strokeDasharray="2 2"
+                        />
+                        <ReferenceArea
+                          y1={CONCENTRATION_STANDARDS.kl.二号壶细度.min}
+                          y2={CONCENTRATION_STANDARDS.kl.二号壶细度.max}
+                          fill="var(--chart-6)"
+                          fillOpacity={0.1}
+                          stroke="var(--chart-6)"
+                          strokeOpacity={0.3}
+                          strokeDasharray="2 2"
+                        />
+
                         <Line
                           dataKey="科力一号壶浓度"
                           type="monotone"
@@ -778,16 +1081,38 @@ export default function ConcentrationFinenessMonitorPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {processLatestData('fdx').map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <DonutChart data={item} standard="富鼎翔标准" />
-                      {(item.name.includes('浓度') || item.name.includes('细度')) && (
-                        <div className="flex justify-center">
-                          {getComplianceStatus(item.value, item.name.includes('浓度') ? 'concentration' : 'fineness')}
+                  {processLatestData('fdx').map((item, index) => {
+                    // 确定参数类型
+                    let parameterType: '进料流量' | '一号壶浓度' | '二号壶浓度' | '二号壶细度' | null = null;
+                    if (item.name === '进料流量') parameterType = '进料流量';
+                    else if (item.name === '一号壶浓度') parameterType = '一号壶浓度';
+                    else if (item.name === '二号壶浓度') parameterType = '二号壶浓度';
+                    else if (item.name === '二号壶细度') parameterType = '二号壶细度';
+
+                    return (
+                      <div key={index} className="flex flex-col space-y-2 h-full">
+                        <div className="flex-1">
+                          <DonutChart
+                            data={item}
+                            standard="富鼎翔标准"
+                            showStandardRange={!!parameterType}
+                            dataSource="fdx"
+                            parameterType={parameterType || undefined}
+                          />
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {parameterType && (
+                          <div className="flex justify-center">
+                            <ComplianceIndicator
+                              value={item.value}
+                              parameterType={parameterType}
+                              dataSource="fdx"
+                              showStandard={false}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </TabsContent>
 
@@ -802,16 +1127,38 @@ export default function ConcentrationFinenessMonitorPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {processLatestData('kl').map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <DonutChart data={item} standard="科力标准" />
-                      {(item.name.includes('浓度') || item.name.includes('细度')) && (
-                        <div className="flex justify-center">
-                          {getComplianceStatus(item.value, item.name.includes('浓度') ? 'concentration' : 'fineness')}
+                  {processLatestData('kl').map((item, index) => {
+                    // 确定参数类型
+                    let parameterType: '进料流量' | '一号壶浓度' | '二号壶浓度' | '二号壶细度' | null = null;
+                    if (item.name === '进料流量') parameterType = '进料流量';
+                    else if (item.name === '一号壶浓度') parameterType = '一号壶浓度';
+                    else if (item.name === '二号壶浓度') parameterType = '二号壶浓度';
+                    else if (item.name === '二号壶细度') parameterType = '二号壶细度';
+
+                    return (
+                      <div key={index} className="flex flex-col space-y-2 h-full">
+                        <div className="flex-1">
+                          <DonutChart
+                            data={item}
+                            standard="科力标准"
+                            showStandardRange={!!parameterType}
+                            dataSource="kl"
+                            parameterType={parameterType || undefined}
+                          />
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {parameterType && (
+                          <div className="flex justify-center">
+                            <ComplianceIndicator
+                              value={item.value}
+                              parameterType={parameterType}
+                              dataSource="kl"
+                              showStandard={false}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </TabsContent>
             </Tabs>
