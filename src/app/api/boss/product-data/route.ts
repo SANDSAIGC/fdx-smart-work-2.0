@@ -1,5 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// 产品累计数据字段映射配置
+const PRODUCT_FIELD_MAPPING = {
+  '期初库存': '月初库存',
+  '周期产量': '本月产量',
+  '周期出厂量': '本月出厂量',
+  '期末有效库存': '期末有效库存',
+  '期末总库存': '期末总库存'
+};
+
+// 聚合产品累计数据的函数
+function aggregateProductData(records: any[]): any {
+  if (!records || records.length === 0) {
+    return null;
+  }
+
+  // 按日期排序，确保能正确获取最早和最晚的记录
+  const sortedRecords = records.sort((a, b) => {
+    const dateA = new Date(a.期初日期 || a.生产周期);
+    const dateB = new Date(b.期初日期 || b.生产周期);
+    return dateA.getTime() - dateB.getTime();
+  });
+
+  const earliestRecord = sortedRecords[0];
+  const latestRecord = sortedRecords[sortedRecords.length - 1];
+
+  const result: any = {};
+
+  // 处理每个目标字段
+  Object.entries(PRODUCT_FIELD_MAPPING).forEach(([targetField, sourceField]) => {
+    if (targetField === '期初库存') {
+      // 期初库存 = 最早一期的月初库存
+      const value = earliestRecord[sourceField];
+      result[targetField] = value !== null && value !== undefined ? parseFloat(value) || 0 : 0;
+    } else if (targetField === '周期产量' || targetField === '周期出厂量') {
+      // 周期产量/出厂量 = 所有期的本月产量/出厂量累加
+      const values = sortedRecords
+        .map(record => parseFloat(record[sourceField]) || 0)
+        .filter(value => !isNaN(value));
+
+      result[targetField] = values.reduce((sum, value) => sum + value, 0);
+    } else if (targetField === '期末有效库存' || targetField === '期末总库存') {
+      // 期末相关值 = 最晚一期的对应字段值
+      const value = latestRecord[sourceField];
+      result[targetField] = value !== null && value !== undefined ? parseFloat(value) || 0 : 0;
+    } else {
+      // 其他字段也使用最晚一期的值
+      const value = latestRecord[sourceField];
+      result[targetField] = value !== null && value !== undefined ? parseFloat(value) || 0 : 0;
+    }
+  });
+
+  return result;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 使用标准的JSON解析方法
@@ -24,11 +78,21 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建查询URL - 查询产品累计表
-    const fdxQueryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('产品累计-FDX')}?select=*&生产周期=eq.${encodeURIComponent(cycle)}`;
-    const jdxyQueryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('产品累计-JDXY')}?select=*&生产周期=eq.${encodeURIComponent(cycle)}`;
+    let fdxQueryUrl, jdxyQueryUrl;
 
-    // 并行查询两个表
+    if (cycle === '全部周期') {
+      // 全部周期：查询所有数据，按日期排序
+      fdxQueryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('产品累计-FDX')}?select=*&order=期初日期.asc`;
+      jdxyQueryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('产品累计-JDXY')}?select=*&order=期初日期.asc`;
+    } else {
+      // 特定周期：按生产周期筛选
+      fdxQueryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('产品累计-FDX')}?select=*&生产周期=eq.${encodeURIComponent(cycle)}`;
+      jdxyQueryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('产品累计-JDXY')}?select=*&生产周期=eq.${encodeURIComponent(cycle)}`;
+    }
+
+    // 并行查询富鼎翔和金鼎锌业数据
     const [fdxResponse, jdxyResponse] = await Promise.all([
+      // 查询产品累计-FDX表
       fetch(fdxQueryUrl, {
         method: 'GET',
         headers: {
@@ -36,8 +100,9 @@ export async function POST(request: NextRequest) {
           'Authorization': `Bearer ${anonKey}`,
           'Content-Type': 'application/json'
         },
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(30000) // 30秒超时
       }),
+      // 查询产品累计-JDXY表
       fetch(jdxyQueryUrl, {
         method: 'GET',
         headers: {
@@ -45,12 +110,12 @@ export async function POST(request: NextRequest) {
           'Authorization': `Bearer ${anonKey}`,
           'Content-Type': 'application/json'
         },
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(30000) // 30秒超时
       })
     ]);
 
     if (!fdxResponse.ok || !jdxyResponse.ok) {
-      console.error('查询产品数据失败:', fdxResponse.status, jdxyResponse.status);
+      console.error('查询产品累计数据失败:', fdxResponse.status, jdxyResponse.status);
       return NextResponse.json(
         { success: false, message: '查询失败' },
         { status: 500 }
@@ -60,50 +125,44 @@ export async function POST(request: NextRequest) {
     const fdxData = await fdxResponse.json();
     const jdxyData = await jdxyResponse.json();
 
-    // 检查是否有数据 - 允许部分数据存在
-    if ((!fdxData || fdxData.length === 0) && (!jdxyData || jdxyData.length === 0)) {
-      return NextResponse.json({
-        success: false,
-        message: `周期 ${cycle} 暂无产品累计数据`
-      });
-    }
+    // 处理数据聚合
+    let processedFdxData = null;
+    let processedJdxyData = null;
 
-    // 合并两个表的数据
-    const allData = [...(fdxData || []), ...(jdxyData || [])];
-
-    // 按项目类型汇总数据
-    const productSummary = allData.reduce((acc: any, item: any) => {
-      const project = item.项目 || '未知项目';
-      if (!acc[project]) {
-        acc[project] = {
-          月初库存: 0,
-          本月产量: 0,
-          本月出厂量: 0,
-          期末总库存: 0,
-          期末有效库存: 0,
-          矿仓底部库存: 0,
-          count: 0
+    if (cycle === '全部周期') {
+      // 全部周期时进行聚合计算
+      processedFdxData = aggregateProductData(fdxData);
+      processedJdxyData = aggregateProductData(jdxyData);
+    } else {
+      // 特定周期时直接使用查询结果
+      if (fdxData && fdxData.length > 0) {
+        const fdxRecord = fdxData[0];
+        processedFdxData = {
+          '期初库存': parseFloat(fdxRecord.月初库存) || 0,
+          '周期产量': parseFloat(fdxRecord.本月产量) || 0,
+          '周期出厂量': parseFloat(fdxRecord.本月出厂量) || 0,
+          '期末有效库存': parseFloat(fdxRecord.期末有效库存) || 0,
+          '期末总库存': parseFloat(fdxRecord.期末总库存) || 0
         };
       }
 
-      acc[project].月初库存 += parseFloat(item.月初库存 || 0);
-      acc[project].本月产量 += parseFloat(item.本月产量 || 0);
-      acc[project].本月出厂量 += parseFloat(item.本月出厂量 || 0);
-      acc[project].期末总库存 += parseFloat(item.期末总库存 || 0);
-      acc[project].期末有效库存 += parseFloat(item.期末有效库存 || 0);
-      acc[project].矿仓底部库存 += parseFloat(item.矿仓底部库存 || 0);
-      acc[project].count += 1;
-
-      return acc;
-    }, {});
+      if (jdxyData && jdxyData.length > 0) {
+        const jdxyRecord = jdxyData[0];
+        processedJdxyData = {
+          '期初库存': parseFloat(jdxyRecord.月初库存) || 0,
+          '周期产量': parseFloat(jdxyRecord.本月产量) || 0,
+          '周期出厂量': parseFloat(jdxyRecord.本月出厂量) || 0,
+          '期末有效库存': parseFloat(jdxyRecord.期末有效库存) || 0,
+          '期末总库存': parseFloat(jdxyRecord.期末总库存) || 0
+        };
+      }
+    }
 
     return NextResponse.json({
       success: true,
       data: {
-        fdx: fdxData && fdxData.length > 0 ? fdxData : null,
-        jdxy: jdxyData && jdxyData.length > 0 ? jdxyData : null,
-        summary: productSummary,
-        totalRecords: allData.length
+        fdx: processedFdxData,
+        jdxy: processedJdxyData
       }
     });
 

@@ -33,6 +33,7 @@ import { BossHamburgerMenu } from "@/components/boss-hamburger-menu";
 import { Footer } from "@/components/ui/footer";
 import DataVs1 from "@/components/data-vs-1";
 import DataVsFuke from "@/components/data-vs-fuke";
+import { formatValue, formatWeight, formatPercentage, formatChartValue } from "@/lib/formatters";
 
 // 类型定义
 interface ManagementModule {
@@ -71,11 +72,11 @@ export default function BossPage() {
     { indicator: "回收率", value: 0, unit: "%", fill: "var(--color-recovery)" },
   ]);
 
-  // 生产计划数据状态
+  // 生产计划数据状态 - 恢复达标与否判定组件
   const [productionPlan, setProductionPlan] = useState({
-    原矿干重处理量: 0,
+    原矿干重处理量t: 0,
     产出精矿Zn品位: 0,
-    产出精矿Zn金属量: 0,
+    产出精矿Zn金属量t: 0,
     回收率: 0,
   });
 
@@ -85,7 +86,7 @@ export default function BossPage() {
   // 状态管理
   const [productionRate, setProductionRate] = useState(72);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCycle, setSelectedCycle] = useState("第一期（4月26日-5月25日）");
+  const [selectedCycle, setSelectedCycle] = useState("全部周期");
   const [activeTab, setActiveTab] = useState("原料累计");
 
   // 数据对比相关状态
@@ -102,14 +103,9 @@ export default function BossPage() {
     production: []
   });
 
-  // 生产周期配置 - 与数据表中的实际值匹配
-  const productionCycles: ProductionCycle[] = [
-    { id: "第一期（4月26日-5月25日）", name: "第一期", dateRange: "4月26日-5月25日" },
-    { id: "第二期（5月26日-6月25日）", name: "第二期", dateRange: "5月26日-6月25日" },
-    { id: "第三期（6月26日-7月25日）", name: "第三期", dateRange: "6月26日-7月25日" },
-    { id: "2024年12月", name: "2024年12月", dateRange: "2024年12月1日-12月31日" },
-    { id: "2024年11月", name: "2024年11月", dateRange: "2024年11月1日-11月30日" },
-  ];
+  // 动态生产周期配置
+  const [productionCycles, setProductionCycles] = useState<string[]>([]);
+  const [isLoadingCycles, setIsLoadingCycles] = useState(false);
 
   // 图表配置 - 移动端优化版本
   const chartConfig = {
@@ -282,14 +278,41 @@ export default function BossPage() {
     }
   };
 
+  // 获取生产周期列表
+  const fetchProductionCycles = React.useCallback(async () => {
+    setIsLoadingCycles(true);
+    try {
+      const response = await fetch('/api/boss/production-cycles');
+      const result = await response.json();
+
+      if (result.success) {
+        setProductionCycles(result.data);
+        // 如果当前选择的周期不在列表中，设置为第一个
+        if (!result.data.includes(selectedCycle)) {
+          setSelectedCycle(result.data[0] || '全部周期');
+        }
+      } else {
+        console.error('获取生产周期失败:', result.message);
+      }
+    } catch (error) {
+      console.error('获取生产周期失败:', error);
+    } finally {
+      setIsLoadingCycles(false);
+    }
+  }, [selectedCycle]);
+
   // 获取当前选中周期的日期范围
   const getCurrentCycleDateRange = () => {
-    const cycle = productionCycles.find(c => c.id === selectedCycle);
-    return cycle ? cycle.dateRange : "";
+    if (selectedCycle === '全部周期') {
+      return "所有周期聚合数据";
+    }
+    // 简单的日期范围解析
+    const match = selectedCycle.match(/（(.+?)）/);
+    return match ? match[1] : "未知日期范围";
   };
 
-  // 通过API获取原料累计数据
-  const fetchRawMaterialData = React.useCallback(async (cycle: string) => {
+  // 通过API获取原料累计数据（带重试机制）
+  const fetchRawMaterialData = React.useCallback(async (cycle: string, retryCount = 0) => {
     setIsLoadingRawMaterial(true);
     setRawMaterialError(null);
     try {
@@ -314,13 +337,14 @@ export default function BossPage() {
       const fdxData = result.data.fdx;
       const jdxyData = result.data.jdxy;
 
+      // 使用智能字段映射构建图表数据
       const newRawMaterialData = [
-        { parameter: "期初库存", company: "富鼎翔", value: fdxData?.月初库存 || 0, fill: "var(--color-富鼎翔)" },
-        { parameter: "期初库存", company: "金鼎锌业", value: jdxyData?.月初库存 || 0, fill: "var(--color-金鼎锌业)" },
-        { parameter: "周期倒入量", company: "富鼎翔", value: fdxData?.本月倒入量 || 0, fill: "var(--color-富鼎翔)" },
-        { parameter: "周期倒入量", company: "金鼎锌业", value: jdxyData?.本月倒入量 || 0, fill: "var(--color-金鼎锌业)" },
-        { parameter: "周期消耗量", company: "富鼎翔", value: fdxData?.本月消耗量 || 0, fill: "var(--color-富鼎翔)" },
-        { parameter: "周期消耗量", company: "金鼎锌业", value: jdxyData?.本月消耗量 || 0, fill: "var(--color-金鼎锌业)" },
+        { parameter: "期初库存", company: "富鼎翔", value: fdxData?.期初库存 || 0, fill: "var(--color-富鼎翔)" },
+        { parameter: "期初库存", company: "金鼎锌业", value: jdxyData?.期初库存 || 0, fill: "var(--color-金鼎锌业)" },
+        { parameter: "周期倒入量", company: "富鼎翔", value: fdxData?.周期倒入量 || 0, fill: "var(--color-富鼎翔)" },
+        { parameter: "周期倒入量", company: "金鼎锌业", value: jdxyData?.周期倒入量 || 0, fill: "var(--color-金鼎锌业)" },
+        { parameter: "周期消耗量", company: "富鼎翔", value: fdxData?.周期消耗量 || 0, fill: "var(--color-富鼎翔)" },
+        { parameter: "周期消耗量", company: "金鼎锌业", value: jdxyData?.周期消耗量 || 0, fill: "var(--color-金鼎锌业)" },
         { parameter: "期末有效库存", company: "富鼎翔", value: fdxData?.期末有效库存 || 0, fill: "var(--color-富鼎翔)" },
         { parameter: "期末有效库存", company: "金鼎锌业", value: jdxyData?.期末有效库存 || 0, fill: "var(--color-金鼎锌业)" },
         { parameter: "矿仓底部库存", company: "富鼎翔", value: fdxData?.矿仓底部库存 || 0, fill: "var(--color-富鼎翔)" },
@@ -333,78 +357,86 @@ export default function BossPage() {
       setRawMaterialError(null);
     } catch (error) {
       console.error('连接Supabase失败:', error);
+
+      // 重试机制：最多重试2次
+      if (retryCount < 2) {
+        console.log(`原料累计数据获取失败，正在重试... (${retryCount + 1}/2)`);
+        setTimeout(() => {
+          fetchRawMaterialData(cycle, retryCount + 1);
+        }, 2000); // 2秒后重试
+        return;
+      }
+
       setRawMaterialError('连接数据库失败，请检查网络连接');
       setRawMaterialData([]);
     } finally {
-      setIsLoadingRawMaterial(false);
+      setIsLoadingRawMaterial(false); // 总是设置loading状态为false
     }
   }, []);
 
-  // 通过API获取核心生产指标和计划数据
+  // 通过API获取核心生产指标数据
   const fetchCoreProductionData = React.useCallback(async (cycle: string) => {
     setIsLoadingCoreProduction(true);
     setCoreProductionError(null);
     try {
-      // 并行获取生产计划数据和原料累计数据
-      const [planResponse, rawMaterialResponse] = await Promise.all([
-        fetch('/api/boss/core-production-data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ cycle }),
-        }),
-        fetch('/api/boss/raw-material-data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ cycle }),
-        })
-      ]);
+      const response = await fetch('/api/boss/core-production-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cycle }),
+      });
 
-      const planResult = await planResponse.json();
-      const rawMaterialResult = await rawMaterialResponse.json();
+      const result = await response.json();
 
-      if (!planResult.success) {
-        console.error('获取生产计划数据失败:', planResult.message);
-        setCoreProductionError(planResult.message || '无法获取生产计划数据');
+      if (!result.success) {
+        console.error('获取核心生产数据失败:', result.message);
+        setCoreProductionError(result.message || '无法获取核心生产数据');
         setCoreProductionData([]);
         return;
       }
 
+      // 构建核心生产指标数据 - 使用API返回的真实数据
+      const actualData = result.data.actual;
+      const planData = result.data.plan;
+
       // 设置生产计划数据
-      const planData = planResult.data;
       setProductionPlan({
-        原矿干重处理量: planData?.['原矿干重处理量t'] || 0,
-        产出精矿Zn品位: planData?.['产出精矿Zn品位%'] || 0,
-        产出精矿Zn金属量: planData?.['产出精矿Zn金属量t'] || 0,
-        回收率: planData?.['回收率%'] || 0,
+        原矿干重处理量t: planData.原矿干重处理量t || 0,
+        产出精矿Zn品位: planData.产出精矿Zn品位 || 0,
+        产出精矿Zn金属量t: planData.产出精矿Zn金属量t || 0,
+        回收率: planData.回收率 || 0,
       });
 
-      // 获取原矿干重处理量的实际值
-      let actualProcessingAmount = 0;
-      if (rawMaterialResult.success && rawMaterialResult.data?.jdxy) {
-        const jdxyData = rawMaterialResult.data.jdxy;
-        // 根据生产周期类型选择对应字段
-        if (cycle.includes('期')) {
-          // 月度周期：使用本月消耗量
-          actualProcessingAmount = jdxyData['本月消耗量'] || 0;
-        } else if (cycle.includes('年')) {
-          // 年度周期：使用本年消耗量
-          actualProcessingAmount = jdxyData['本年消耗量'] || 0;
-        }
-      }
-
-      // 构建实际生产数据（原矿干重处理量使用真实数据，其他暂时使用模拟数据）
       const actualCurrentData = [
-        { indicator: "原矿干重处理量", value: actualProcessingAmount, unit: "t", fill: "var(--color-processing)" },
-        { indicator: "Zn精矿平均品位", value: 52.8, unit: "%", fill: "var(--color-grade)" },
-        { indicator: "金属产出量", value: 6640, unit: "t", fill: "var(--color-output)" },
-        { indicator: "回收率", value: 89.2, unit: "%", fill: "var(--color-recovery)" },
+        {
+          indicator: "原矿干重处理量",
+          value: parseFloat((actualData.原矿干重处理量 || 0).toFixed(3)),
+          unit: "t",
+          fill: "var(--color-processing)"
+        },
+        {
+          indicator: "Zn精矿平均品位",
+          value: parseFloat((actualData.Zn精矿平均品位 || 0).toFixed(2)),
+          unit: "%",
+          fill: "var(--color-grade)"
+        },
+        {
+          indicator: "金属产出量",
+          value: parseFloat((actualData.金属产出量 || 0).toFixed(3)),
+          unit: "t",
+          fill: "var(--color-output)"
+        },
+        {
+          indicator: "回收率",
+          value: parseFloat((actualData.回收率 || 0).toFixed(2)),
+          unit: "%",
+          fill: "var(--color-recovery)"
+        },
       ];
 
       setCoreProductionData(actualCurrentData);
+      setCoreProductionError(null);
     } catch (error) {
       console.error('获取核心生产数据失败:', error);
       setCoreProductionError('获取核心生产数据失败，请检查网络连接');
@@ -414,8 +446,8 @@ export default function BossPage() {
     }
   }, []);
 
-  // 通过API获取产品累计数据
-  const fetchProductData = React.useCallback(async (cycle: string) => {
+  // 通过API获取产品累计数据（带重试机制）
+  const fetchProductData = React.useCallback(async (cycle: string, retryCount = 0) => {
     setIsLoadingProduct(true);
     setProductError(null);
     try {
@@ -436,62 +468,46 @@ export default function BossPage() {
         return;
       }
 
-      // 构建图表数据 - 基于真实的产品累计数据
+      // 构建图表数据 - 基于API返回的标准化产品累计数据
       const data = result.data;
       const fdxData = data.fdx;
       const jdxyData = data.jdxy;
 
-      // 计算FDX和JDXY的汇总数据
-      const fdxSummary = fdxData ? fdxData.reduce((acc: any, item: any) => ({
-        月初库存: acc.月初库存 + parseFloat(item.月初库存 || 0),
-        本月产量: acc.本月产量 + parseFloat(item.本月产量 || 0),
-        本月出厂量: acc.本月出厂量 + parseFloat(item.本月出厂量 || 0),
-        期末总库存: acc.期末总库存 + parseFloat(item.期末总库存 || 0),
-        期末有效库存: acc.期末有效库存 + parseFloat(item.期末有效库存 || 0),
-        矿仓底部库存: acc.矿仓底部库存 + parseFloat(item.矿仓底部库存 || 0),
-      }), { 月初库存: 0, 本月产量: 0, 本月出厂量: 0, 期末总库存: 0, 期末有效库存: 0, 矿仓底部库存: 0 }) : null;
-
-      const jdxySummary = jdxyData ? jdxyData.reduce((acc: any, item: any) => ({
-        月初库存: acc.月初库存 + parseFloat(item.月初库存 || 0),
-        本月产量: acc.本月产量 + parseFloat(item.本月产量 || 0),
-        本月出厂量: acc.本月出厂量 + parseFloat(item.本月出厂量 || 0),
-        期末总库存: acc.期末总库存 + parseFloat(item.期末总库存 || 0),
-        期末有效库存: acc.期末有效库存 + parseFloat(item.期末有效库存 || 0),
-        矿仓底部库存: acc.矿仓底部库存 + parseFloat(item.矿仓底部库存 || 0),
-      }), { 月初库存: 0, 本月产量: 0, 本月出厂量: 0, 期末总库存: 0, 期末有效库存: 0, 矿仓底部库存: 0 }) : null;
-
       const newProductData = [
-        { parameter: "期初库存", company: "富鼎翔", value: Math.round(fdxSummary?.月初库存 || 0), fill: "var(--color-富鼎翔)" },
-        { parameter: "期初库存", company: "金鼎锌业", value: Math.round(jdxySummary?.月初库存 || 0), fill: "var(--color-金鼎锌业)" },
-        { parameter: "周期产量", company: "富鼎翔", value: Math.round(fdxSummary?.本月产量 || 0), fill: "var(--color-富鼎翔)" },
-        { parameter: "周期产量", company: "金鼎锌业", value: Math.round(jdxySummary?.本月产量 || 0), fill: "var(--color-金鼎锌业)" },
-        { parameter: "周期出厂量", company: "富鼎翔", value: Math.round(fdxSummary?.本月出厂量 || 0), fill: "var(--color-富鼎翔)" },
-        { parameter: "周期出厂量", company: "金鼎锌业", value: Math.round(jdxySummary?.本月出厂量 || 0), fill: "var(--color-金鼎锌业)" },
-        { parameter: "期末有效库存", company: "富鼎翔", value: Math.round(fdxSummary?.期末有效库存 || 0), fill: "var(--color-富鼎翔)" },
-        { parameter: "期末有效库存", company: "金鼎锌业", value: Math.round(jdxySummary?.期末有效库存 || 0), fill: "var(--color-金鼎锌业)" },
-        { parameter: "矿仓底部库存", company: "富鼎翔", value: Math.round(fdxSummary?.矿仓底部库存 || 0), fill: "var(--color-富鼎翔)" },
-        { parameter: "矿仓底部库存", company: "金鼎锌业", value: Math.round(jdxySummary?.矿仓底部库存 || 0), fill: "var(--color-金鼎锌业)" },
-        { parameter: "期末总库存", company: "富鼎翔", value: Math.round(fdxSummary?.期末总库存 || 0), fill: "var(--color-富鼎翔)" },
-        { parameter: "期末总库存", company: "金鼎锌业", value: Math.round(jdxySummary?.期末总库存 || 0), fill: "var(--color-金鼎锌业)" },
+        { parameter: "期初库存", company: "富鼎翔", value: fdxData?.期初库存 || 0, fill: "var(--color-富鼎翔)" },
+        { parameter: "期初库存", company: "金鼎锌业", value: jdxyData?.期初库存 || 0, fill: "var(--color-金鼎锌业)" },
+        { parameter: "周期产量", company: "富鼎翔", value: fdxData?.周期产量 || 0, fill: "var(--color-富鼎翔)" },
+        { parameter: "周期产量", company: "金鼎锌业", value: jdxyData?.周期产量 || 0, fill: "var(--color-金鼎锌业)" },
+        { parameter: "周期出厂量", company: "富鼎翔", value: fdxData?.周期出厂量 || 0, fill: "var(--color-富鼎翔)" },
+        { parameter: "周期出厂量", company: "金鼎锌业", value: jdxyData?.周期出厂量 || 0, fill: "var(--color-金鼎锌业)" },
+        { parameter: "期末有效库存", company: "富鼎翔", value: fdxData?.期末有效库存 || 0, fill: "var(--color-富鼎翔)" },
+        { parameter: "期末有效库存", company: "金鼎锌业", value: jdxyData?.期末有效库存 || 0, fill: "var(--color-金鼎锌业)" },
+        { parameter: "期末总库存", company: "富鼎翔", value: fdxData?.期末总库存 || 0, fill: "var(--color-富鼎翔)" },
+        { parameter: "期末总库存", company: "金鼎锌业", value: jdxyData?.期末总库存 || 0, fill: "var(--color-金鼎锌业)" },
       ];
 
       setProductData(newProductData);
       setProductError(null);
     } catch (error) {
       console.error('获取产品数据失败:', error);
+
+      // 重试机制：最多重试2次
+      if (retryCount < 2) {
+        console.log(`产品数据获取失败，正在重试... (${retryCount + 1}/2)`);
+        setTimeout(() => {
+          fetchProductData(cycle, retryCount + 1);
+        }, 2000); // 2秒后重试
+        return;
+      }
+
       setProductError('获取产品数据时发生异常');
       setProductData([]);
     } finally {
-      setIsLoadingProduct(false);
+      setIsLoadingProduct(false); // 总是设置loading状态为false
     }
   }, []);
 
-  // 监听生产周期变化，自动加载原料累计数据、核心生产指标数据和产品数据
-  useEffect(() => {
-    fetchRawMaterialData(selectedCycle);
-    fetchCoreProductionData(selectedCycle);
-    fetchProductData(selectedCycle);
-  }, [selectedCycle]); // 移除函数依赖，避免无限循环
+  // 移除重复的useEffect，避免数据竞争
 
   // 数据对比图表组件
   const ComparisonChart = ({ data, title, description, lines, trendText = "数据趋势稳定" }: {
@@ -676,7 +692,7 @@ export default function BossPage() {
       // 根据指标类型设置最大值和计算百分比
       switch (data.indicator) {
         case "原矿干重处理量":
-          maxValue = 20000; // 20000t
+          maxValue = productionPlan.原矿干重处理量t || 20000; // 使用计划处理量作为最大值
           currentPercentage = (data.value / maxValue) * 100;
           break;
         case "Zn精矿平均品位":
@@ -684,7 +700,7 @@ export default function BossPage() {
           currentPercentage = (data.value / maxValue) * 100;
           break;
         case "金属产出量":
-          maxValue = 10000; // 10000t
+          maxValue = productionPlan.产出精矿Zn金属量t || 10000; // 使用计划产出量作为最大值
           currentPercentage = (data.value / maxValue) * 100;
           break;
         case "回收率":
@@ -712,17 +728,17 @@ export default function BossPage() {
       ];
 
       return { percentage: currentPercentage, chartData: segments };
-    }, [data]);
+    }, [data, productionPlan]);
 
-    // 根据指标类型渲染不同的底部内容 - 使用useCallback优化性能
+    // 根据指标类型渲染不同的底部内容 - 恢复达标与否判定组件
     const renderFooterContent = React.useCallback(() => {
       switch (data.indicator) {
         case "原矿干重处理量":
-          const progressPercentage = Math.min((data.value / productionPlan.原矿干重处理量) * 100, 100);
+          const progressPercentage = Math.min((data.value / productionPlan.原矿干重处理量t) * 100, 100);
           return (
             <CardFooter className="flex-col gap-2 pt-4">
               <div className="text-xs text-muted-foreground text-center">
-                计划处理量: {productionPlan.原矿干重处理量}t | 当前: {data.value}t
+                计划处理量: {productionPlan.原矿干重处理量t.toFixed(3)}t | 当前: {data.value}t
               </div>
               <div className="w-full space-y-2">
                 <div className="flex justify-between text-xs">
@@ -745,23 +761,24 @@ export default function BossPage() {
                 </Badge>
               </div>
               <div className="text-xs text-muted-foreground text-center">
-                标准: {productionPlan.产出精矿Zn品位}% | 当前: {data.value}%
+                标准: {productionPlan.产出精矿Zn品位.toFixed(2)}% | 当前: {data.value}%
               </div>
             </CardFooter>
           );
 
         case "金属产出量":
-          const isOutputQualified = data.value >= productionPlan.产出精矿Zn金属量;
+          const outputProgressPercentage = Math.min((data.value / productionPlan.产出精矿Zn金属量t) * 100, 100);
           return (
             <CardFooter className="flex-col gap-2 pt-4">
-              <div className="flex items-center justify-between w-full">
-                <span className="text-xs text-muted-foreground">达标状态</span>
-                <Badge variant={isOutputQualified ? "default" : "destructive"} className="text-xs">
-                  {isOutputQualified ? "达标" : "未达标"}
-                </Badge>
-              </div>
               <div className="text-xs text-muted-foreground text-center">
-                标准: {productionPlan.产出精矿Zn金属量}t | 当前: {data.value}t
+                计划产出量: {productionPlan.产出精矿Zn金属量t.toFixed(3)}t | 当前: {data.value}t
+              </div>
+              <div className="w-full space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span>产出进度</span>
+                  <span className="font-medium">{outputProgressPercentage.toFixed(0)}%</span>
+                </div>
+                <Progress value={outputProgressPercentage} className="h-2" />
               </div>
             </CardFooter>
           );
@@ -777,15 +794,21 @@ export default function BossPage() {
                 </Badge>
               </div>
               <div className="text-xs text-muted-foreground text-center">
-                标准: {productionPlan.回收率}% | 当前: {data.value}%
+                标准: {productionPlan.回收率.toFixed(2)}% | 当前: {data.value}%
               </div>
             </CardFooter>
           );
 
         default:
-          return null;
+          return (
+            <CardFooter className="flex-col gap-2 pt-4">
+              <div className="text-xs text-muted-foreground text-center">
+                当前{data.indicator}: {data.value}{data.unit}
+              </div>
+            </CardFooter>
+          );
       }
-    }, [data.indicator, data.value, productionPlan]);
+    }, [data.indicator, data.value, data.unit, productionPlan]);
 
     // 自定义tooltip内容，显示实际数值而不是百分比
     const CustomTooltip = ({ active, payload }: any) => {
@@ -800,7 +823,7 @@ export default function BossPage() {
                     {data.name}
                   </span>
                   <span className="font-bold text-muted-foreground">
-                    {data.actualValue}{data.unit}
+                    {formatValue(data.actualValue, data.unit)}
                   </span>
                 </div>
               </div>
@@ -849,7 +872,7 @@ export default function BossPage() {
                             y={viewBox.cy}
                             className="fill-foreground text-2xl font-bold"
                           >
-                            {data.value.toLocaleString()}
+                            {formatValue(data.value, '')}
                           </tspan>
                           <tspan
                             x={viewBox.cx}
@@ -959,6 +982,20 @@ export default function BossPage() {
 
 
 
+  // 页面加载时获取生产周期列表
+  React.useEffect(() => {
+    fetchProductionCycles();
+  }, [fetchProductionCycles]);
+
+  // 当生产周期列表加载完成或选择的周期改变时获取数据
+  React.useEffect(() => {
+    if (productionCycles.length > 0) {
+      fetchRawMaterialData(selectedCycle);
+      fetchProductData(selectedCycle);
+      fetchCoreProductionData(selectedCycle);
+    }
+  }, [selectedCycle, productionCycles.length, fetchRawMaterialData, fetchProductData, fetchCoreProductionData]);
+
   // 移除持续刷新的定时器，保持静态数据显示
   // 生产率数据现在保持静态，只在页面加载时设置一次
   // 如需更新，可通过用户操作或页面刷新触发
@@ -1011,18 +1048,21 @@ export default function BossPage() {
 
               {/* 生产周期选择器 */}
               <div className="flex items-center gap-4 mt-4 mb-6">
-                <Select value={selectedCycle} onValueChange={setSelectedCycle}>
+                <Select value={selectedCycle} onValueChange={setSelectedCycle} disabled={isLoadingCycles}>
                   <SelectTrigger className="w-[280px]">
-                    <SelectValue placeholder="选择生产周期" />
+                    <SelectValue placeholder={isLoadingCycles ? "加载中..." : "选择生产周期"} />
                   </SelectTrigger>
                   <SelectContent>
                     {productionCycles.map((cycle) => (
-                      <SelectItem key={cycle.id} value={cycle.id}>
-                        生产周期: {cycle.name} ({cycle.dateRange})
+                      <SelectItem key={cycle} value={cycle}>
+                        {cycle === '全部周期' ? '全部周期 (聚合数据)' : `生产周期: ${cycle}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {isLoadingCycles && (
+                  <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
               </div>
 
               <TabsContent value="原料累计" className="space-y-4">

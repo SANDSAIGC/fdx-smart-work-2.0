@@ -190,15 +190,26 @@
     background: transparent;
   }
 
-  /* 柱状图文字颜色优化 */
+  /* 生产累计数据大盘 - 柱状图文字样式（保持原始大小） */
   .bar-label-text {
     fill: white;
     font-weight: 600;
-    font-size: 11px;
+    font-size: 11px; /* 恢复原始字号 */
+  }
+
+  /* 数据对比分析 - 柱状图文字样式（增大字号） */
+  .comparison-bar-label-text {
+    fill: white;
+    font-weight: 600;
+    font-size: 17px; /* 增加1.5倍字号：11px * 1.5 ≈ 17px */
   }
 
   /* 确保在任何主题下文字都清晰可见 */
   .dark .bar-label-text {
+    fill: white;
+  }
+
+  .dark .comparison-bar-label-text {
     fill: white;
   }
 

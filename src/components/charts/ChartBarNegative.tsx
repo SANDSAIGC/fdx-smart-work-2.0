@@ -17,6 +17,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
+import { formatValue } from "@/lib/formatters"
 
 interface ChartBarNegativeProps {
   data: Array<{
@@ -51,6 +52,26 @@ export function ChartBarNegative({
   height = 300, // 默认高度减小
   compact = false
 }: ChartBarNegativeProps) {
+
+  // 自定义标签组件 - 使用数据对比分析专用的CSS类
+  const CustomComparisonLabel = (props: any) => {
+    const { x, y, width, height, value, payload } = props;
+
+    if (compact && Math.abs(value) < 0.01) return null;
+
+    return (
+      <text
+        x={x + width / 2}
+        y={y - 5}
+        textAnchor="middle"
+        dominantBaseline="bottom"
+        className="comparison-bar-label-text" // 使用数据对比分析专用的CSS类
+      >
+        {formatValue(value, payload?.unit)}
+      </text>
+    );
+  };
+
   return (
     <Card className={`bar-chart-negative-responsive ${className} ${compact ? 'p-2' : ''}`}>
       <CardHeader className={`card-header ${compact ? 'pb-2' : ''}`}>
@@ -93,20 +114,14 @@ export function ChartBarNegative({
                 hideLabel 
                 hideIndicator 
                 formatter={(value, name, props) => [
-                  `${value}${props.payload?.unit || ''}`,
+                  formatValue(value, props.payload?.unit),
                   props.payload?.parameter
                 ]}
               />}
             />
             <Bar dataKey="value">
               <LabelList
-                position="top"
-                dataKey="value"
-                fillOpacity={1}
-                fontSize={compact ? 8 : 10}
-                formatter={(value: number, props: any) =>
-                  compact && Math.abs(value) < 0.01 ? '' : `${value}${props?.unit || ''}`
-                }
+                content={CustomComparisonLabel}
               />
               {data.map((item, index) => (
                 <Cell

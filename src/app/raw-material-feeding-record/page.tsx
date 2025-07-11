@@ -13,12 +13,20 @@ import {
   Edit,
   Trash2,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  Download,
+  RefreshCw,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  Zap,
+  Activity,
+  RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -33,6 +41,16 @@ interface RawMaterialFeedingRecord {
   班次: '白班' | '夜班';
   进料量: number;
   操作员: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// 生产班报数据接口
+interface ProductionShiftReport {
+  id?: number;
+  日期: string;
+  班次: '白班' | '夜班';
+  '氧化锌原矿-湿重（t）': number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -53,15 +71,18 @@ export default function RawMaterialFeedingRecordPage() {
   const [calculatorDialogOpen, setCalculatorDialogOpen] = useState(false);
 
   // 历史记录状态
-  const [records, setRecords] = useState<RawMaterialFeedingRecord[]>([]);
+  const [records, setRecords] = useState<ProductionShiftReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingRecord, setEditingRecord] = useState<RawMaterialFeedingRecord | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  
+
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const recordsPerPage = 10;
+
+  // 排序状态
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // 用户状态
   const [user, setUser] = useState<any>(null);
@@ -90,10 +111,58 @@ export default function RawMaterialFeedingRecordPage() {
   };
 
   // 分页计算函数
-  const getPaginatedRecords = (allRecords: RawMaterialFeedingRecord[]) => {
+  const getPaginatedRecords = (allRecords: ProductionShiftReport[]) => {
     const startIndex = (currentPage - 1) * recordsPerPage;
     const endIndex = startIndex + recordsPerPage;
     return allRecords.slice(startIndex, endIndex);
+  };
+
+  // 排序切换函数
+  const toggleSort = () => {
+    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    const sortedRecords = [...records].sort((a, b) => {
+      const dateA = new Date(a.日期).getTime();
+      const dateB = new Date(b.日期).getTime();
+      return sortOrder === 'desc' ? dateA - dateB : dateB - dateA;
+    });
+    setRecords(sortedRecords);
+  };
+
+  // 导出Excel功能
+  const exportToExcel = () => {
+    // 准备导出数据
+    const exportData = records.map(record => ({
+      '日期': record.日期,
+      '班次': record.班次,
+      '氧化锌原矿-湿重（t）': record['氧化锌原矿-湿重（t）'] || '--',
+      '创建时间': record.created_at ? format(new Date(record.created_at), 'yyyy-MM-dd HH:mm') : '--'
+    }));
+
+    // 创建CSV内容
+    const headers = ['日期', '班次', '氧化锌原矿-湿重（t）', '创建时间'];
+    const csvContent = [
+      headers.join(','),
+      ...exportData.map(row => headers.map(header => row[header as keyof typeof row]).join(','))
+    ].join('\n');
+
+    // 下载文件
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `原料投料记录_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success('数据导出成功');
+  };
+
+  // 刷新数据
+  const refreshData = () => {
+    fetchRecords();
+    toast.success('数据已刷新');
   };
 
   // 计算总页数
@@ -147,7 +216,7 @@ export default function RawMaterialFeedingRecordPage() {
   const fetchRecords = async () => {
     try {
       setIsLoading(true);
-      
+
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -155,9 +224,9 @@ export default function RawMaterialFeedingRecordPage() {
         throw new Error('Supabase配置未找到');
       }
 
-      // 获取所有记录
-      const queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('原矿进料记录')}?select=*`;
-      
+      // 从生产班报-FDX表获取有氧化锌原矿-湿重（t）数据的记录
+      const queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产班报-FDX')}?select=*&氧化锌原矿-湿重（t）=not.is.null&order=日期.desc,班次.desc`;
+
       const response = await fetch(queryUrl, {
         headers: {
           'apikey': anonKey,
@@ -169,21 +238,21 @@ export default function RawMaterialFeedingRecordPage() {
       if (response.ok) {
         const data = await response.json();
 
-        // 按创建时间倒序排列
-        const sortedRecords = (data || []).sort((a: RawMaterialFeedingRecord, b: RawMaterialFeedingRecord) => {
-          return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
-        });
+        // 过滤出有效的记录并按日期和班次排序
+        const validRecords = (data || []).filter((record: ProductionShiftReport) =>
+          record['氧化锌原矿-湿重（t）'] !== null && record['氧化锌原矿-湿重（t）'] !== undefined
+        );
 
         // 设置总记录数
-        setTotalRecords(sortedRecords.length);
+        setTotalRecords(validRecords.length);
 
         // 设置所有记录（用于分页）
-        setRecords(sortedRecords);
+        setRecords(validRecords);
       } else {
         throw new Error('获取记录失败');
       }
     } catch (error) {
-      console.error('获取原矿进料记录失败:', error);
+      console.error('获取生产班报记录失败:', error);
       toast.error('获取历史记录失败');
     } finally {
       setIsLoading(false);
@@ -235,7 +304,7 @@ export default function RawMaterialFeedingRecordPage() {
   // 提交记录
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       toast.error('用户信息未加载，请重新登录');
       return;
@@ -248,7 +317,7 @@ export default function RawMaterialFeedingRecordPage() {
 
     try {
       setIsSubmitting(true);
-      
+
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -256,6 +325,7 @@ export default function RawMaterialFeedingRecordPage() {
         throw new Error('Supabase配置未找到');
       }
 
+      // 1. 先保存到原矿进料记录表（保持原有功能）
       const recordData = {
         日期: date,
         班次: shift,
@@ -263,7 +333,7 @@ export default function RawMaterialFeedingRecordPage() {
         操作员: user.姓名 || user.name || '未知用户'
       };
 
-      const response = await fetch(`${supabaseUrl}/rest/v1/${encodeURIComponent('原矿进料记录')}`, {
+      const recordResponse = await fetch(`${supabaseUrl}/rest/v1/${encodeURIComponent('原矿进料记录')}`, {
         method: 'POST',
         headers: {
           'apikey': anonKey,
@@ -274,31 +344,95 @@ export default function RawMaterialFeedingRecordPage() {
         body: JSON.stringify(recordData)
       });
 
-      if (response.ok) {
-        const newRecord = await response.json();
-        console.log('✅ [原矿进料记录] 记录创建成功:', newRecord);
-        
-        toast.success('记录提交成功');
-        
-        // 重置表单
-        setDate(format(new Date(), 'yyyy-MM-dd'));
-        setShift('白班');
-        setFeedingAmount('');
-        setStartReading('');
-        setEndReading('');
-        setCalculatedAmount(0);
-
-        // 刷新记录列表
-        await fetchRecords();
-
-        // 重置到第一页显示新记录
-        setCurrentPage(1);
-      } else {
-        throw new Error('提交失败');
+      if (!recordResponse.ok) {
+        throw new Error('保存原矿进料记录失败');
       }
+
+      // 2. 更新生产班报-FDX表中的氧化锌原矿-湿重（t）字段
+      // 首先检查是否已存在相同日期和班次的记录
+      const checkUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产班报-FDX')}?日期=eq.${date}&班次=eq.${shift}`;
+
+      const checkResponse = await fetch(checkUrl, {
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!checkResponse.ok) {
+        throw new Error('检查生产班报记录失败');
+      }
+
+      const existingRecords = await checkResponse.json();
+
+      if (existingRecords && existingRecords.length > 0) {
+        // 记录已存在，更新氧化锌原矿-湿重（t）字段
+        const updateUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产班报-FDX')}?日期=eq.${date}&班次=eq.${shift}`;
+
+        const updateResponse = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            '氧化锌原矿-湿重（t）': parseFloat(feedingAmount)
+          })
+        });
+
+        if (!updateResponse.ok) {
+          throw new Error('更新生产班报记录失败');
+        }
+
+        console.log('✅ [生产班报-FDX] 氧化锌原矿-湿重（t）字段更新成功');
+      } else {
+        // 记录不存在，创建新记录，仅设置日期、班次和氧化锌原矿-湿重（t）字段
+        const createUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产班报-FDX')}`;
+
+        const createResponse = await fetch(createUrl, {
+          method: 'POST',
+          headers: {
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            日期: date,
+            班次: shift,
+            '氧化锌原矿-湿重（t）': parseFloat(feedingAmount)
+          })
+        });
+
+        if (!createResponse.ok) {
+          throw new Error('创建生产班报记录失败');
+        }
+
+        console.log('✅ [生产班报-FDX] 新记录创建成功，氧化锌原矿-湿重（t）字段已设置');
+      }
+
+      const newRecord = await recordResponse.json();
+      console.log('✅ [原矿进料记录] 记录创建成功:', newRecord);
+
+      toast.success('记录提交成功，已同步到生产班报');
+
+      // 重置表单
+      setDate(format(new Date(), 'yyyy-MM-dd'));
+      setShift('白班');
+      setFeedingAmount('');
+      setStartReading('');
+      setEndReading('');
+      setCalculatedAmount(0);
+
+      // 刷新记录列表
+      await fetchRecords();
+
+      // 重置到第一页显示新记录
+      setCurrentPage(1);
     } catch (error) {
       console.error('提交记录失败:', error);
-      toast.error('提交记录失败');
+      toast.error(`提交记录失败: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -314,33 +448,36 @@ export default function RawMaterialFeedingRecordPage() {
         throw new Error('Supabase配置未找到');
       }
 
-      const updateData = {
-        日期: updatedRecord.日期,
-        班次: updatedRecord.班次,
-        进料量: updatedRecord.进料量
-      };
+      // 直接更新生产班报-FDX表中的氧化锌原矿-湿重（t）字段
+      const updateUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产班报-FDX')}?id=eq.${updatedRecord.id}`;
 
-      const response = await fetch(`${supabaseUrl}/rest/v1/${encodeURIComponent('原矿进料记录')}?id=eq.${updatedRecord.id}`, {
+      const updateResponse = await fetch(updateUrl, {
         method: 'PATCH',
         headers: {
           'apikey': anonKey,
           'Authorization': `Bearer ${anonKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify({
+          日期: updatedRecord.日期,
+          班次: updatedRecord.班次,
+          '氧化锌原矿-湿重（t）': updatedRecord.进料量
+        })
       });
 
-      if (response.ok) {
-        toast.success('记录更新成功');
-        setIsEditDialogOpen(false);
-        setEditingRecord(null);
-        await fetchRecords();
-      } else {
-        throw new Error('更新失败');
+      if (!updateResponse.ok) {
+        throw new Error('更新生产班报记录失败');
       }
+
+      console.log('✅ [生产班报-FDX] 氧化锌原矿-湿重（t）字段更新成功');
+
+      toast.success('记录更新成功');
+      setIsEditDialogOpen(false);
+      setEditingRecord(null);
+      await fetchRecords();
     } catch (error) {
       console.error('更新记录失败:', error);
-      toast.error('更新记录失败');
+      toast.error(`更新记录失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
 
@@ -377,85 +514,83 @@ export default function RawMaterialFeedingRecordPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 日期选择 */}
-                <div className="space-y-2">
-                  <Label className="flex items-center">
-                    <Calendar className="mr-2 h-4 w-4 text-primary" />
-                    日期
-                  </Label>
-                  <Input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    required
-                  />
-                </div>
+              {/* 日期选择 */}
+              <div className="space-y-2">
+                <Label className="flex items-center">
+                  <Calendar className="mr-2 h-4 w-4 text-primary" />
+                  日期
+                </Label>
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
+              </div>
 
-                {/* 班次选择 */}
-                <div className="space-y-3">
-                  <Label className="flex items-center text-base font-medium">
-                    <Clock className="mr-2 h-4 w-4 text-primary" />
-                    班次
-                  </Label>
-                  <RadioGroup 
-                    value={shift} 
-                    onValueChange={(value: '白班' | '夜班') => setShift(value)}
-                    className="grid grid-cols-2 gap-3"
+              {/* 班次选择 */}
+              <div className="space-y-3">
+                <Label className="flex items-center text-base font-medium">
+                  <Clock className="mr-2 h-4 w-4 text-primary" />
+                  班次
+                </Label>
+                <RadioGroup
+                  value={shift}
+                  onValueChange={(value: '白班' | '夜班') => setShift(value)}
+                  className="grid grid-cols-2 gap-3"
+                >
+                  {/* 白班选项 */}
+                  <Label
+                    htmlFor="day-shift"
+                    className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 ${
+                      shift === '白班'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 dark:border-gray-700 dark:hover:border-blue-600 dark:hover:bg-blue-950/10'
+                    }`}
                   >
-                    {/* 白班选项 */}
-                    <Label 
-                      htmlFor="day-shift"
-                      className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 ${
-                        shift === '白班' 
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' 
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 dark:border-gray-700 dark:hover:border-blue-600 dark:hover:bg-blue-950/10'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <RadioGroupItem value="白班" id="day-shift" />
-                        <div className="flex-1">
-                          <span className="font-medium text-blue-700 dark:text-blue-400">白班</span>
-                          <p className="text-sm text-blue-600 dark:text-blue-500 mt-1">08:00 - 20:00</p>
-                        </div>
+                    <div className="flex items-center space-x-3">
+                      <RadioGroupItem value="白班" id="day-shift" />
+                      <div className="flex-1">
+                        <span className="font-medium text-blue-700 dark:text-blue-400">白班</span>
+                        <p className="text-sm text-blue-600 dark:text-blue-500 mt-1">08:00 - 20:00</p>
                       </div>
-                      {shift === '白班' && (
-                        <Badge variant="secondary" className="absolute top-2 right-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                          已选择
-                        </Badge>
-                      )}
-                    </Label>
+                    </div>
+                    {shift === '白班' && (
+                      <Badge variant="secondary" className="absolute top-2 right-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                        已选择
+                      </Badge>
+                    )}
+                  </Label>
 
-                    {/* 夜班选项 */}
-                    <Label 
-                      htmlFor="night-shift"
-                      className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 ${
-                        shift === '夜班' 
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20' 
-                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50 dark:border-gray-700 dark:hover:border-purple-600 dark:hover:bg-purple-950/10'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <RadioGroupItem value="夜班" id="night-shift" />
-                        <div className="flex-1">
-                          <span className="font-medium text-purple-700 dark:text-purple-400">夜班</span>
-                          <p className="text-sm text-purple-600 dark:text-purple-500 mt-1">20:00 - 08:00</p>
-                        </div>
+                  {/* 夜班选项 */}
+                  <Label
+                    htmlFor="night-shift"
+                    className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 ${
+                      shift === '夜班'
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20'
+                        : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50 dark:border-gray-700 dark:hover:border-purple-600 dark:hover:bg-purple-950/10'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <RadioGroupItem value="夜班" id="night-shift" />
+                      <div className="flex-1">
+                        <span className="font-medium text-purple-700 dark:text-purple-400">夜班</span>
+                        <p className="text-sm text-purple-600 dark:text-purple-500 mt-1">20:00 - 08:00</p>
                       </div>
-                      {shift === '夜班' && (
-                        <Badge variant="secondary" className="absolute top-2 right-2 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-                          已选择
-                        </Badge>
-                      )}
-                    </Label>
-                  </RadioGroup>
-                </div>
+                    </div>
+                    {shift === '夜班' && (
+                      <Badge variant="secondary" className="absolute top-2 right-2 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                        已选择
+                      </Badge>
+                    )}
+                  </Label>
+                </RadioGroup>
               </div>
 
               {/* 进料量输入框 */}
               <div className="space-y-2">
                 <Label className="flex items-center">
-                  <Truck className="mr-2 h-4 w-4 text-primary" />
+                  <Activity className="mr-2 h-4 w-4 text-primary" />
                   进料量 (吨)
                 </Label>
                 <div className="flex items-center space-x-2">
@@ -545,10 +680,34 @@ export default function RawMaterialFeedingRecordPage() {
         {/* 历史记录 */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Truck className="mr-2 h-5 w-5 text-primary" />
-              历史记录
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                <CardTitle>历史记录</CardTitle>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToExcel}
+                  className="text-xs"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  导出EXCEL
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={refreshData}
+                  disabled={isLoading}
+                  className="h-8 w-8"
+                  title="刷新数据"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+            <CardDescription>查看和管理氧化锌原矿投料记录</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -557,120 +716,111 @@ export default function RawMaterialFeedingRecordPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>操作</TableHead>
-                      <TableHead>日期</TableHead>
-                      <TableHead>班次</TableHead>
-                      <TableHead>进料量(t)</TableHead>
-                      <TableHead>操作员</TableHead>
-                      <TableHead>创建时间</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getPaginatedRecords(records).map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingRecord(record);
-                                setIsEditDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(record.id!)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell>{record.日期}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className={`${
-                              record.班次 === '白班'
-                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300'
-                                : 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900 dark:text-purple-300'
-                            }`}
-                          >
-                            {record.班次}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">{record.进料量.toFixed(2)}</TableCell>
-                        <TableCell>{record.操作员}</TableCell>
-                        <TableCell>
-                          {record.created_at ? format(new Date(record.created_at), 'yyyy-MM-dd HH:mm') : '--'}
-                        </TableCell>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>操作</TableHead>
+                        <TableHead
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={toggleSort}
+                        >
+                          日期 {sortOrder === 'desc' ? '↓' : '↑'}
+                        </TableHead>
+                        <TableHead>班次</TableHead>
+                        <TableHead>氧化锌原矿-湿重(t)</TableHead>
+                        <TableHead>创建时间</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {/* 分页控件 */}
-                {totalRecords > 0 && (
-                  <div className="flex items-center justify-between px-4 py-4 border-t">
-                    <div className="text-sm text-muted-foreground">
-                      显示第 {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} - {Math.min(currentPage * recordsPerPage, totalRecords)} 条，共 {totalRecords} 条记录
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={goToPreviousPage}
-                        disabled={currentPage === 1}
-                      >
-                        上一页
-                      </Button>
-
-                      <div className="flex items-center space-x-1">
-                        {/* 页码按钮 */}
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let pageNumber;
-                          if (totalPages <= 5) {
-                            pageNumber = i + 1;
-                          } else if (currentPage <= 3) {
-                            pageNumber = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNumber = totalPages - 4 + i;
-                          } else {
-                            pageNumber = currentPage - 2 + i;
-                          }
-
-                          return (
-                            <Button
-                              key={pageNumber}
-                              variant={currentPage === pageNumber ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => goToPage(pageNumber)}
-                              className="w-8 h-8 p-0"
+                    </TableHeader>
+                    <TableBody>
+                      {getPaginatedRecords(records).map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // 转换数据格式以适应编辑表单
+                                  const editRecord: RawMaterialFeedingRecord = {
+                                    id: record.id,
+                                    日期: record.日期,
+                                    班次: record.班次,
+                                    进料量: record['氧化锌原矿-湿重（t）'] || 0,
+                                    操作员: '系统记录',
+                                    created_at: record.created_at,
+                                    updated_at: record.updated_at
+                                  };
+                                  setEditingRecord(editRecord as any);
+                                  setIsEditDialogOpen(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>{record.日期}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="secondary"
+                              className={`${
+                                record.班次 === '白班'
+                                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300'
+                                  : 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900 dark:text-purple-300'
+                              }`}
                             >
-                              {pageNumber}
-                            </Button>
-                          );
-                        })}
-                      </div>
+                              {record.班次}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {record['氧化锌原矿-湿重（t）'] ? record['氧化锌原矿-湿重（t）']!.toFixed(3) : '--'}
+                          </TableCell>
+                          <TableCell>
+                            {record.created_at ? format(new Date(record.created_at), 'yyyy-MM-dd HH:mm') : '--'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={goToNextPage}
-                        disabled={currentPage === totalPages}
-                      >
-                        下一页
-                      </Button>
+                {/* 分页控制 */}
+                {(() => {
+                  const totalPages = Math.ceil(totalRecords / recordsPerPage);
+
+                  if (totalPages <= 1) return null;
+
+                  return (
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        共 {totalRecords} 条记录，第 {currentPage} 页，共 {totalPages} 页
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          上一页
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          下一页
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
           </CardContent>
@@ -679,9 +829,12 @@ export default function RawMaterialFeedingRecordPage() {
 
       {/* 编辑对话框 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>编辑进料记录</DialogTitle>
+            <DialogTitle className="flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <span>编辑氧化锌原矿湿重</span>
+            </DialogTitle>
           </DialogHeader>
           {editingRecord && (
             <EditRecordForm
@@ -709,8 +862,6 @@ function EditRecordForm({
   onSave: (updatedRecord: RawMaterialFeedingRecord) => void;
   onCancel: () => void;
 }) {
-  const [editDate, setEditDate] = useState(record.日期);
-  const [editShift, setEditShift] = useState<'白班' | '夜班'>(record.班次);
   const [editFeedingAmount, setEditFeedingAmount] = useState(record.进料量.toString());
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -718,7 +869,7 @@ function EditRecordForm({
     e.preventDefault();
 
     if (!editFeedingAmount || parseFloat(editFeedingAmount) <= 0) {
-      toast.error('请输入有效的进料量');
+      toast.error('请输入有效的氧化锌原矿湿重');
       return;
     }
 
@@ -726,13 +877,11 @@ function EditRecordForm({
 
     const updatedRecord = {
       ...record,
-      日期: editDate,
-      班次: editShift,
       进料量: parseFloat(editFeedingAmount)
     };
 
     try {
-      await onSave(updatedRecord);
+      onSave(updatedRecord);
     } finally {
       setIsUpdating(false);
     }
@@ -740,46 +889,60 @@ function EditRecordForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>日期</Label>
-        <Input
-          type="date"
-          value={editDate}
-          onChange={(e) => setEditDate(e.target.value)}
-          required
-        />
+      {/* 只读信息显示 */}
+      <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-muted-foreground">日期</Label>
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{record.日期}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-muted-foreground">班次</Label>
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Badge
+                variant="secondary"
+                className={`${
+                  record.班次 === '白班'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                    : 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                }`}
+              >
+                {record.班次}
+              </Badge>
+            </div>
+          </div>
+        </div>
+        <div className="text-xs text-muted-foreground flex items-center space-x-1">
+          <RotateCcw className="h-3 w-3" />
+          <span>日期和班次信息为只读，仅可修改氧化锌原矿湿重数值</span>
+        </div>
       </div>
 
+      {/* 可编辑的氧化锌原矿湿重字段 */}
       <div className="space-y-2">
-        <Label>班次</Label>
-        <RadioGroup
-          value={editShift}
-          onValueChange={(value: '白班' | '夜班') => setEditShift(value)}
-          className="grid grid-cols-2 gap-2"
-        >
-          <Label htmlFor="edit-day-shift" className="flex items-center space-x-2 cursor-pointer">
-            <RadioGroupItem value="白班" id="edit-day-shift" />
-            <span>白班</span>
-          </Label>
-          <Label htmlFor="edit-night-shift" className="flex items-center space-x-2 cursor-pointer">
-            <RadioGroupItem value="夜班" id="edit-night-shift" />
-            <span>夜班</span>
-          </Label>
-        </RadioGroup>
-      </div>
-
-      <div className="space-y-2">
-        <Label>进料量 (吨)</Label>
+        <Label className="flex items-center">
+          <Activity className="mr-2 h-4 w-4 text-primary" />
+          氧化锌原矿-湿重 (吨)
+        </Label>
         <Input
           type="number"
-          step="0.01"
+          step="0.001"
           value={editFeedingAmount}
           onChange={(e) => setEditFeedingAmount(e.target.value)}
+          placeholder="请输入氧化锌原矿湿重"
+          className="font-medium"
           required
         />
+        <div className="text-xs text-muted-foreground">
+          支持三位小数精度，例如：123.456
+        </div>
       </div>
 
-      <div className="flex justify-end space-x-2">
+      <div className="flex justify-end space-x-2 pt-4 border-t">
         <Button type="button" variant="outline" onClick={onCancel}>
           取消
         </Button>
@@ -790,7 +953,10 @@ function EditRecordForm({
               保存中...
             </>
           ) : (
-            '保存'
+            <>
+              <Activity className="mr-2 h-4 w-4" />
+              保存修改
+            </>
           )}
         </Button>
       </div>

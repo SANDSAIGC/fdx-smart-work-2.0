@@ -53,6 +53,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { formatValue as formatValueUtil, formatWeight, formatPercentage } from '@/lib/formatters';
 
 // 简化的数据类型定义
 interface SampleData {
@@ -1169,11 +1170,18 @@ function LabPageContent() {
     }
   }, []);
 
-  // 格式化数值显示
-  const formatValue = useCallback((value: any, precision: number = 2) => {
+  // 格式化数值显示 - 支持智能单位识别
+  const formatValue = useCallback((value: any, unit?: string, precision?: number) => {
     if (value === null || value === undefined || value === '') return '--';
-    if (typeof value === 'number') return value.toFixed(precision);
-    return value.toString();
+
+    // 如果指定了精度，直接使用
+    if (precision !== undefined) {
+      if (typeof value === 'number') return value.toFixed(precision);
+      return value.toString();
+    }
+
+    // 使用统一的格式化工具，支持智能单位识别
+    return formatValueUtil(value, unit);
   }, []);
 
   // 排序函数

@@ -17,6 +17,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { ChartBarNegative } from "@/components/charts/ChartBarNegative";
+import { formatValue, formatWeight, formatPercentage } from "@/lib/formatters";
 
 // 数据对比分析组件接口
 interface DataVs1Props {

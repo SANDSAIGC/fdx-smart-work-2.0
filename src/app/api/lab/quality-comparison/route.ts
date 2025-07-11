@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
         'apikey': anonKey,
         'Authorization': `Bearer ${anonKey}`,
         'Content-Type': 'application/json'
-      }
+      },
+      signal: AbortSignal.timeout(30000) // 30秒超时
     });
 
     if (!response.ok) {

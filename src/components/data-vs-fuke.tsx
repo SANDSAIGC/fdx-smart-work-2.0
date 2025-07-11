@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { RefreshCw, Calendar, BarChart3 } from "lucide-react";
 import { ChartBarNegative } from "@/components/charts/ChartBarNegative";
+import { formatValue, formatWeight, formatPercentage } from "@/lib/formatters";
 
 // 数据对比分析-富科组件接口
 interface DataVsFukeProps {

@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from '
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { TrendingUp, Factory, Package } from 'lucide-react';
+import { formatWeight } from '@/lib/formatters';
 
 // 数据类型定义
 interface ProductionDataItem {
@@ -44,13 +45,13 @@ export default function ProductionDataChart({
   selectedCycle,
   getCurrentCycleDateRange
 }: ProductionDataChartProps) {
-  // 转换数据格式并进行比例压缩处理
+  // 转换数据格式 - 移除压缩机制，显示真实数据
   const chartData = React.useMemo(() => {
-    const result: Array<{ 
-      parameter: string; 
-      富鼎翔: number; 
-      金鼎锌业: number; 
-      originalData: { 富鼎翔: number; 金鼎锌业: number } 
+    const result: Array<{
+      parameter: string;
+      富鼎翔: number;
+      金鼎锌业: number;
+      originalData: { 富鼎翔: number; 金鼎锌业: number }
     }> = [];
     const grouped: { [key: string]: { 富鼎翔?: number; 金鼎锌业?: number } } = {};
 
@@ -61,29 +62,17 @@ export default function ProductionDataChart({
       grouped[item.parameter][item.company as '富鼎翔' | '金鼎锌业'] = item.value;
     });
 
-    // 找到所有数值的最大值，用于比例压缩
-    let maxValue = 0;
-    Object.values(grouped).forEach(values => {
+    Object.entries(grouped).forEach(([parameter, values]) => {
       const fdxValue = values.富鼎翔 || 0;
       const jdxyValue = values.金鼎锌业 || 0;
-      maxValue = Math.max(maxValue, fdxValue, jdxyValue);
-    });
 
-    // 设置压缩阈值，考虑25%右边距的空间限制
-    const compressionThreshold = 8000; // 降低阈值，为右侧预留空间
-    const compressionRatio = maxValue > compressionThreshold ? compressionThreshold / maxValue : 1;
-
-    Object.entries(grouped).forEach(([parameter, values]) => {
-      const originalFdx = values.富鼎翔 || 0;
-      const originalJdxy = values.金鼎锌业 || 0;
-      
       result.push({
         parameter,
-        富鼎翔: originalFdx * compressionRatio,
-        金鼎锌业: originalJdxy * compressionRatio,
+        富鼎翔: fdxValue,
+        金鼎锌业: jdxyValue,
         originalData: {
-          富鼎翔: originalFdx,
-          金鼎锌业: originalJdxy
+          富鼎翔: fdxValue,
+          金鼎锌业: jdxyValue
         }
       });
     });
@@ -140,7 +129,7 @@ export default function ProductionDataChart({
         dominantBaseline="middle"
         className="bar-label-text"
       >
-        {`${originalValue}t`}
+        {formatWeight(originalValue, 't')}
       </text>
     );
   };
@@ -189,7 +178,7 @@ export default function ProductionDataChart({
                     type="category"
                     hide
                   />
-                  <XAxis dataKey="富鼎翔" type="number" hide />
+                  <XAxis type="number" hide />
                   <Tooltip
                     cursor={false}
                     content={<ChartTooltipContent indicator="line" />}

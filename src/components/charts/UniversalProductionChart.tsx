@@ -29,7 +29,6 @@ interface UniversalProductionChartProps {
   selectedPeriod?: string;
   periodDateRange?: string;
   unit?: string;
-  compressionThreshold?: number;
   showFooter?: boolean;
   footerText?: string;
   icon?: React.ReactNode;
@@ -45,7 +44,6 @@ export default function UniversalProductionChart({
   selectedPeriod = "",
   periodDateRange = "",
   unit = "t",
-  compressionThreshold = 8000,
   showFooter = true,
   footerText,
   icon,
@@ -70,10 +68,10 @@ export default function UniversalProductionChart({
     return config;
   }, [companies]);
 
-  // 转换数据格式并进行比例压缩处理
+  // 转换数据格式 - 移除压缩机制，显示真实数据
   const chartData = React.useMemo(() => {
-    const result: Array<{ 
-      parameter: string; 
+    const result: Array<{
+      parameter: string;
       [key: string]: any;
       originalData: { [key: string]: number }
     }> = [];
@@ -86,31 +84,20 @@ export default function UniversalProductionChart({
       grouped[item.parameter][item.company] = item.value;
     });
 
-    // 找到所有数值的最大值，用于比例压缩
-    let maxValue = 0;
-    Object.values(grouped).forEach(values => {
-      Object.values(values).forEach(value => {
-        maxValue = Math.max(maxValue, value);
-      });
-    });
-
-    // 设置压缩阈值，考虑25%右边距的空间限制
-    const compressionRatio = maxValue > compressionThreshold ? compressionThreshold / maxValue : 1;
-
     Object.entries(grouped).forEach(([parameter, values]) => {
       const item: any = { parameter, originalData: {} };
-      
+
       companies.forEach(company => {
         const originalValue = values[company.name] || 0;
-        item[company.name] = originalValue * compressionRatio;
+        item[company.name] = originalValue;
         item.originalData[company.name] = originalValue;
       });
-      
+
       result.push(item);
     });
 
     return result;
-  }, [data, companies, compressionThreshold]);
+  }, [data, companies]);
 
   // 暗色模式检测
   const [isDarkMode, setIsDarkMode] = React.useState(false);

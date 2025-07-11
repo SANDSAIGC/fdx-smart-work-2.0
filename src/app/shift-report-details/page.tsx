@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Footer } from "@/components/ui/footer";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar, BarChart, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import { formatValue } from "@/lib/formatters";
 
 // 生产班报数据接口
 interface ShiftReportData {
@@ -766,11 +767,9 @@ export default function ShiftReportDetailsPage() {
                       }
 
                       const unit = item.unit || '';
-                      // 根据单位设置小数位数：重量类保留3位，百分比类保留2位
-                      const formattedValue = unit === 't'
-                        ? Number(displayValue).toFixed(3)
-                        : Number(displayValue).toFixed(2);
-                      return [`${formattedValue}${unit}`, name];
+                      // 使用统一的格式化函数：重量类保留3位，百分比类保留2位
+                      const formattedValue = formatValue(displayValue, unit);
+                      return [formattedValue, name];
                     }}
                   />
                 }
