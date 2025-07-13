@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { HamburgerMenu } from "@/components/hamburger-menu";
+import { ResponsivePagination } from "@/components/ui/responsive-pagination";
 
 import {
   DropdownMenu,
@@ -45,8 +46,6 @@ import {
   Mountain,
   Download,
   Eye,
-  ChevronLeft,
-  ChevronRight,
   TruckIcon
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -1253,30 +1252,14 @@ function LabPageContent() {
                   </Table>
                 </div>
 
-                {/* 分页控制 */}
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    共 {sortedTableData.length} 条记录，第 {currentPage} 页，共 {Math.ceil(sortedTableData.length / itemsPerPage)} 页
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(sortedTableData.length / itemsPerPage), prev + 1))}
-                      disabled={currentPage === Math.ceil(sortedTableData.length / itemsPerPage)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                {/* 分页控制 - 使用通用响应式分页组件 */}
+                <ResponsivePagination
+                  currentPage={currentPage}
+                  totalItems={sortedTableData.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  showDetailedInfo={true}
+                />
               </div>
             )}
           </div>

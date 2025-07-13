@@ -18,6 +18,7 @@ import { Footer } from "@/components/ui/footer";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar, BarChart, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { formatValue } from "@/lib/formatters";
+import { ResponsivePagination } from "@/components/ui/responsive-pagination";
 
 // 生产班报数据接口
 interface ShiftReportData {
@@ -1332,29 +1333,13 @@ export default function ShiftReportDetailsPage() {
                 </div>
 
                 {/* 分页控制 */}
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    共 {processJdxyTableData().length} 条记录，第 {currentPage} 页，共 {Math.ceil(processJdxyTableData().length / itemsPerPage)} 页
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(processJdxyTableData().length / itemsPerPage), prev + 1))}
-                      disabled={currentPage === Math.ceil(processJdxyTableData().length / itemsPerPage)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                <ResponsivePagination
+                  currentPage={currentPage}
+                  totalItems={processJdxyTableData().length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  showDetailedInfo={true}
+                />
               </TabsContent>
 
               {/* 富鼎翔数据表格 */}
@@ -1405,29 +1390,13 @@ export default function ShiftReportDetailsPage() {
                 </div>
 
                 {/* 分页控制 */}
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    共 {processFdxTableData().length} 条记录，第 {currentPage} 页，共 {Math.ceil(processFdxTableData().length / itemsPerPage)} 页
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(processFdxTableData().length / itemsPerPage), prev + 1))}
-                      disabled={currentPage === Math.ceil(processFdxTableData().length / itemsPerPage)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                <ResponsivePagination
+                  currentPage={currentPage}
+                  totalItems={processFdxTableData().length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  showDetailedInfo={true}
+                />
               </TabsContent>
 
               {/* 科力数据表格 */}
@@ -1478,29 +1447,13 @@ export default function ShiftReportDetailsPage() {
                 </div>
 
                 {/* 分页控制 */}
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    共 {processKlTableData().length} 条记录，第 {currentPage} 页，共 {Math.ceil(processKlTableData().length / itemsPerPage)} 页
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(processKlTableData().length / itemsPerPage), prev + 1))}
-                      disabled={currentPage === Math.ceil(processKlTableData().length / itemsPerPage)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                <ResponsivePagination
+                  currentPage={currentPage}
+                  totalItems={processKlTableData().length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  showDetailedInfo={true}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>

@@ -47,6 +47,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ResponsivePagination } from "@/components/ui/responsive-pagination";
 
 // 类型定义
 interface IncomingOreData {
@@ -1382,44 +1383,13 @@ export default function IncomingOreDetailsPage() {
                   </Table>
 
                   {/* 分页控件 */}
-                  {processTableData().length > itemsPerPage && (
-                    <div className="flex items-center justify-between px-2 py-4">
-                      <div className="text-sm text-muted-foreground">
-                        显示 {((currentPage - 1) * itemsPerPage) + 1} 到 {Math.min(currentPage * itemsPerPage, processTableData().length)} 条，共 {processTableData().length} 条记录
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          disabled={currentPage === 1}
-                        >
-                          上一页
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: getTotalPages(processTableData()) }, (_, i) => i + 1).map((page) => (
-                            <Button
-                              key={page}
-                              variant={currentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setCurrentPage(page)}
-                              className="w-8 h-8 p-0"
-                            >
-                              {page}
-                            </Button>
-                          ))}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, getTotalPages(processTableData())))}
-                          disabled={currentPage === getTotalPages(processTableData())}
-                        >
-                          下一页
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  <ResponsivePagination
+                    currentPage={currentPage}
+                    totalItems={processTableData().length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    showDetailedInfo={true}
+                  />
                 </div>
               </TabsContent>
 
@@ -1472,44 +1442,13 @@ export default function IncomingOreDetailsPage() {
                   </Table>
 
                   {/* 分页控件 */}
-                  {processFdxTableData().length > itemsPerPage && (
-                    <div className="flex items-center justify-between px-2 py-4">
-                      <div className="text-sm text-muted-foreground">
-                        显示 {((currentPage - 1) * itemsPerPage) + 1} 到 {Math.min(currentPage * itemsPerPage, processFdxTableData().length)} 条，共 {processFdxTableData().length} 条记录
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          disabled={currentPage === 1}
-                        >
-                          上一页
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: getTotalPages(processFdxTableData()) }, (_, i) => i + 1).map((page) => (
-                            <Button
-                              key={page}
-                              variant={currentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setCurrentPage(page)}
-                              className="w-8 h-8 p-0"
-                            >
-                              {page}
-                            </Button>
-                          ))}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, getTotalPages(processFdxTableData())))}
-                          disabled={currentPage === getTotalPages(processFdxTableData())}
-                        >
-                          下一页
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  <ResponsivePagination
+                    currentPage={currentPage}
+                    totalItems={processFdxTableData().length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    showDetailedInfo={true}
+                  />
                 </div>
               </TabsContent>
             </Tabs>
