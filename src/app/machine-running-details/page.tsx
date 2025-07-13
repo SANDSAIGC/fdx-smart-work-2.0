@@ -63,24 +63,16 @@ export default function MachineRunningDetailsPage() {
   const [overviewRecords, setOverviewRecords] = useState<MachineRunningRecord[]>([]);
   const [overviewAggregation, setOverviewAggregation] = useState<StatusAggregation[]>([]);
 
-  // 总览日期范围状态
-  const [overviewStartDate, setOverviewStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7); // 默认最近一周
-    return format(date, 'yyyy-MM-dd');
-  });
-  const [overviewEndDate, setOverviewEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  // 总览日期范围状态 - 设备运行状况总览：起始日期固定为2025-04-26，结束日期为当前日期
+  const [overviewStartDate, setOverviewStartDate] = useState('2025-04-26');
+  const [overviewEndDate, setOverviewEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // 当前状态查询日期
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
-  // 表格日期状态 - 默认选定为最近一周
-  const [tableStartDate, setTableStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return format(date, 'yyyy-MM-dd');
-  });
-  const [tableEndDate, setTableEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  // 表格日期状态 - 设备运行记录汇总：起始日期固定为2025-04-26，结束日期为当前日期
+  const [tableStartDate, setTableStartDate] = useState('2025-04-26');
+  const [tableEndDate, setTableEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
@@ -178,12 +170,11 @@ export default function MachineRunningDetailsPage() {
 
   // 快捷日期设置
   const setDateRange = useCallback((days: number) => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    setTableStartDate(format(startDate, 'yyyy-MM-dd'));
-    setTableEndDate(format(endDate, 'yyyy-MM-dd'));
+    setTableStartDate(startDate);
+    setTableEndDate(endDate);
   }, []);
 
   // 获取总览数据的专用函数
@@ -262,12 +253,11 @@ export default function MachineRunningDetailsPage() {
 
   // 总览快捷日期设置
   const setOverviewDateRange = useCallback((days: number) => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    setOverviewStartDate(format(startDate, 'yyyy-MM-dd'));
-    setOverviewEndDate(format(endDate, 'yyyy-MM-dd'));
+    setOverviewStartDate(startDate);
+    setOverviewEndDate(endDate);
   }, []);
 
   // 刷新表格数据

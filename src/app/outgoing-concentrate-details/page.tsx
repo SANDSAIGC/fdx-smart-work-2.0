@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { format } from 'date-fns';
 import { Header2 } from '@/components/headers';
 import {
   TruckIcon, RefreshCw, Calendar, PieChartIcon,
-  TrendingUp, Download, ChevronLeft, ChevronRight
+  TrendingUp, Download, ChevronLeft, ChevronRight, Eye
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,10 +12,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Footer } from "@/components/ui/footer";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LabelList } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartConfig,
+  ChartLegend,
+  ChartLegendContent
+} from "@/components/ui/chart";
 import { Label as RechartsLabel } from "recharts";
 
 // 出厂精矿数据接口
@@ -60,25 +67,19 @@ export default function OutgoingConcentrateDetailsPage() {
   const [fdxData, setFdxData] = useState<OutgoingConcentrateData[]>([]);
   const [jdxyData, setJdxyData] = useState<OutgoingConcentrateData[]>([]);
   
-  // 趋势图日期范围
-  const [trendStartDate, setTrendStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return format(date, 'yyyy-MM-dd');
+  // 趋势图日期范围 - 出厂趋势总览组件
+  const [trendStartDate, setTrendStartDate] = useState('2025-04-26');
+  const [trendEndDate, setTrendEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // 单日详情日期 - 出厂单日详情组件：设置为当前日期减去2天
+  const [singleDate, setSingleDate] = useState(() => {
+    return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   });
-  const [trendEndDate, setTrendEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
-  
-  // 单日详情日期
-  const [singleDate, setSingleDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [singleDayTab, setSingleDayTab] = useState('jdxy');
-  
-  // 表格数据日期范围
-  const [tableStartDate, setTableStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return format(date, 'yyyy-MM-dd');
-  });
-  const [tableEndDate, setTableEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+
+  // 表格数据日期范围 - 出厂数据汇总组件
+  const [tableStartDate, setTableStartDate] = useState('2025-04-26');
+  const [tableEndDate, setTableEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState('jdxy');
 
   // 分页状态
@@ -95,19 +96,31 @@ export default function OutgoingConcentrateDetailsPage() {
 
   // 日期快捷选择功能 - 趋势图
   const setDateRange = (days: number) => {
-    const endDate = format(new Date(), 'yyyy-MM-dd');
-    const startDate = format(new Date(Date.now() - days * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     setTrendStartDate(startDate);
     setTrendEndDate(endDate);
   };
 
   // 日期快捷选择功能 - 数据汇总表格
   const setTableDateRange = (days: number) => {
-    const endDate = format(new Date(), 'yyyy-MM-dd');
-    const startDate = format(new Date(Date.now() - days * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     setTableStartDate(startDate);
     setTableEndDate(endDate);
   };
+
+  // 图表配置
+  const chartConfig = {
+    富鼎翔: {
+      label: "富鼎翔",
+      color: "var(--chart-1)",
+    },
+    金鼎: {
+      label: "金鼎",
+      color: "var(--chart-2)",
+    },
+  } satisfies ChartConfig;
 
   // 数据获取函数
   const fetchOutgoingConcentrateData = useCallback(async (startDate: string, endDate: string) => {
@@ -757,9 +770,14 @@ export default function OutgoingConcentrateDetailsPage() {
   };
 
   // 导出EXCEL功能
-  const exportToExcel = () => {
+  const exportToExcel = useCallback(() => {
     const currentData = activeTab === 'jdxy' ? processJdxyTableData() : processFdxTableData();
     const companyName = activeTab === 'jdxy' ? '金鼎锌业' : '富鼎翔';
+
+    if (currentData.length === 0) {
+      alert('没有数据可导出');
+      return;
+    }
 
     // 创建CSV内容
     const headers = ['日期', '出厂湿重(t)', '水份(%)', '精矿Pb品位(%)', '精矿Zn品位(%)', 'Zn金属量(t)'];
@@ -785,13 +803,13 @@ export default function OutgoingConcentrateDetailsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, [activeTab, processJdxyTableData, processFdxTableData, tableStartDate, tableEndDate]);
 
   // 初始化数据加载
   useEffect(() => {
     fetchOutgoingConcentrateData(trendStartDate, trendEndDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [trendStartDate, trendEndDate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -881,186 +899,206 @@ export default function OutgoingConcentrateDetailsPage() {
             <Carousel className="w-full">
               <CarouselContent>
                 {/* 出厂湿重趋势图 */}
-                <CarouselItem>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">出厂湿重趋势</CardTitle>
-                      <CardDescription>单位：吨(t)</CardDescription>
+                <CarouselItem className="w-full">
+                  <Card className="w-full">
+                    <CardHeader className="pb-2 text-left">
+                      <CardTitle className="text-lg text-left">出厂湿重</CardTitle>
+                      <CardDescription className="text-sm text-left">单位: t</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={processTrendData().wetWeight}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="金鼎"
-                              stroke="var(--chart-1)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-1)" }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="富鼎翔"
-                              stroke="var(--chart-2)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-2)" }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                    <CardContent className="w-full">
+                      <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <LineChart data={processTrendData().wetWeight}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            tickFormatter={(value) => value.slice(5)}
+                          />
+                          <YAxis />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <ChartLegend content={<ChartLegendContent payload={[]} />} />
+                          <Line
+                            type="monotone"
+                            dataKey="富鼎翔"
+                            stroke="var(--color-富鼎翔)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-富鼎翔)", strokeWidth: 2 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="金鼎"
+                            stroke="var(--color-金鼎)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-金鼎)", strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ChartContainer>
                     </CardContent>
                   </Card>
                 </CarouselItem>
 
                 {/* 水份趋势图 */}
-                <CarouselItem>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">水份趋势</CardTitle>
-                      <CardDescription>单位：百分比(%)</CardDescription>
+                <CarouselItem className="w-full">
+                  <Card className="w-full">
+                    <CardHeader className="pb-2 text-left">
+                      <CardTitle className="text-lg text-left">水份</CardTitle>
+                      <CardDescription className="text-sm text-left">单位: %</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={processTrendData().moisture}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="金鼎"
-                              stroke="var(--chart-1)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-1)" }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="富鼎翔"
-                              stroke="var(--chart-2)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-2)" }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                    <CardContent className="w-full">
+                      <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <LineChart data={processTrendData().moisture}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            tickFormatter={(value) => value.slice(5)}
+                          />
+                          <YAxis />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <ChartLegend content={<ChartLegendContent payload={[]} />} />
+                          <Line
+                            type="monotone"
+                            dataKey="富鼎翔"
+                            stroke="var(--color-富鼎翔)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-富鼎翔)", strokeWidth: 2 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="金鼎"
+                            stroke="var(--color-金鼎)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-金鼎)", strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ChartContainer>
                     </CardContent>
                   </Card>
                 </CarouselItem>
 
                 {/* 精矿Pb品位趋势图 */}
-                <CarouselItem>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">精矿Pb品位趋势</CardTitle>
-                      <CardDescription>单位：百分比(%)</CardDescription>
+                <CarouselItem className="w-full">
+                  <Card className="w-full">
+                    <CardHeader className="pb-2 text-left">
+                      <CardTitle className="text-lg text-left">精矿Pb品位</CardTitle>
+                      <CardDescription className="text-sm text-left">单位: %</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={processTrendData().pbGrade}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="金鼎"
-                              stroke="var(--chart-1)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-1)" }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="富鼎翔"
-                              stroke="var(--chart-2)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-2)" }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                    <CardContent className="w-full">
+                      <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <LineChart data={processTrendData().pbGrade}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            tickFormatter={(value) => value.slice(5)}
+                          />
+                          <YAxis />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <ChartLegend content={<ChartLegendContent payload={[]} />} />
+                          <Line
+                            type="monotone"
+                            dataKey="富鼎翔"
+                            stroke="var(--color-富鼎翔)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-富鼎翔)", strokeWidth: 2 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="金鼎"
+                            stroke="var(--color-金鼎)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-金鼎)", strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ChartContainer>
                     </CardContent>
                   </Card>
                 </CarouselItem>
 
                 {/* 精矿Zn品位趋势图 */}
-                <CarouselItem>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">精矿Zn品位趋势</CardTitle>
-                      <CardDescription>单位：百分比(%)</CardDescription>
+                <CarouselItem className="w-full">
+                  <Card className="w-full">
+                    <CardHeader className="pb-2 text-left">
+                      <CardTitle className="text-lg text-left">精矿Zn品位</CardTitle>
+                      <CardDescription className="text-sm text-left">单位: %</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={processTrendData().znGrade}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="金鼎"
-                              stroke="var(--chart-1)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-1)" }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="富鼎翔"
-                              stroke="var(--chart-2)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-2)" }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                    <CardContent className="w-full">
+                      <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <LineChart data={processTrendData().znGrade}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            tickFormatter={(value) => value.slice(5)}
+                          />
+                          <YAxis />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <ChartLegend content={<ChartLegendContent payload={[]} />} />
+                          <Line
+                            type="monotone"
+                            dataKey="富鼎翔"
+                            stroke="var(--color-富鼎翔)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-富鼎翔)", strokeWidth: 2 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="金鼎"
+                            stroke="var(--color-金鼎)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-金鼎)", strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ChartContainer>
                     </CardContent>
                   </Card>
                 </CarouselItem>
 
                 {/* Zn金属量趋势图 */}
-                <CarouselItem>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Zn金属量趋势</CardTitle>
-                      <CardDescription>单位：吨(t)</CardDescription>
+                <CarouselItem className="w-full">
+                  <Card className="w-full">
+                    <CardHeader className="pb-2 text-left">
+                      <CardTitle className="text-lg text-left">Zn金属量</CardTitle>
+                      <CardDescription className="text-sm text-left">单位: t</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={processTrendData().znMetal}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="金鼎"
-                              stroke="var(--chart-1)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-1)" }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="富鼎翔"
-                              stroke="var(--chart-2)"
-                              strokeWidth={2}
-                              dot={{ fill: "var(--chart-2)" }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                    <CardContent className="w-full">
+                      <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <LineChart data={processTrendData().znMetal}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tickLine={false}
+                            tickMargin={10}
+                            axisLine={false}
+                            tickFormatter={(value) => value.slice(5)}
+                          />
+                          <YAxis />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <ChartLegend content={<ChartLegendContent payload={[]} />} />
+                          <Line
+                            type="monotone"
+                            dataKey="富鼎翔"
+                            stroke="var(--color-富鼎翔)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-富鼎翔)", strokeWidth: 2 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="金鼎"
+                            stroke="var(--color-金鼎)"
+                            strokeWidth={2}
+                            dot={{ fill: "var(--color-金鼎)", strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ChartContainer>
                     </CardContent>
                   </Card>
                 </CarouselItem>
@@ -1148,18 +1186,29 @@ export default function OutgoingConcentrateDetailsPage() {
                 <TruckIcon className="h-5 w-5 text-primary" />
                 <CardTitle>出厂数据汇总</CardTitle>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={refreshTableData}
-                disabled={isLoading}
-                className="h-8 w-8"
-                title="刷新表格数据"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToExcel}
+                  className="text-xs"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  导出EXCEL
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={refreshTableData}
+                  disabled={isLoading}
+                  className="h-8 w-8"
+                  title="刷新表格数据"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
-            <CardDescription>查看指定时间范围内的出厂精矿汇总数据</CardDescription>
+            <CardDescription>查看和管理出厂精矿数据记录</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* 日期范围选择器 */}
@@ -1234,6 +1283,7 @@ export default function OutgoingConcentrateDetailsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>操作</TableHead>
                         <TableHead
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={toggleSort}
@@ -1251,7 +1301,50 @@ export default function OutgoingConcentrateDetailsPage() {
                       {processJdxyTableData()
                         .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                         .map((row, index) => (
-                        <TableRow key={index}>
+                        <TableRow key={`jdxy-${row.日期}-${index}`}>
+                          <TableCell>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                  <DialogTitle>出厂精矿详情 - {row.日期}</DialogTitle>
+                                  <DialogDescription>
+                                    金鼎锌业出厂精矿数据详细信息
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid grid-cols-2 gap-4 py-4">
+                                  <div className="space-y-2">
+                                    <Label>日期</Label>
+                                    <div className="p-2 bg-muted rounded">{row.日期}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>出厂湿重(t)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['出厂湿重(t)']}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>水份(%)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['水份(%)']}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>精矿Pb品位(%)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['精矿Pb品位(%)']}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>精矿Zn品位(%)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['精矿Zn品位(%)']}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Zn金属量(t)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['Zn金属量(t)']}</div>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
                           <TableCell>{row.日期}</TableCell>
                           <TableCell>{row['出厂湿重(t)']}</TableCell>
                           <TableCell>{row['水份(%)']}</TableCell>
@@ -1265,34 +1358,40 @@ export default function OutgoingConcentrateDetailsPage() {
                 </div>
 
                 {/* 分页控制 */}
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    共 {processJdxyTableData().length} 条记录
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      上一页
-                    </Button>
-                    <span className="text-sm">
-                      第 {currentPage} 页，共 {Math.ceil(processJdxyTableData().length / itemsPerPage)} 页
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.min(Math.ceil(processJdxyTableData().length / itemsPerPage), currentPage + 1))}
-                      disabled={currentPage >= Math.ceil(processJdxyTableData().length / itemsPerPage)}
-                    >
-                      下一页
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                {(() => {
+                  const tableData = processJdxyTableData();
+                  const totalPages = Math.ceil(tableData.length / itemsPerPage);
+
+                  if (totalPages <= 1) return null;
+
+                  return (
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        共 {tableData.length} 条记录，第 {currentPage} 页，共 {totalPages} 页
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          上一页
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          下一页
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </TabsContent>
 
               {/* 富鼎翔数据表格 */}
@@ -1301,6 +1400,7 @@ export default function OutgoingConcentrateDetailsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>操作</TableHead>
                         <TableHead
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={toggleSort}
@@ -1318,7 +1418,50 @@ export default function OutgoingConcentrateDetailsPage() {
                       {processFdxTableData()
                         .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                         .map((row, index) => (
-                        <TableRow key={index}>
+                        <TableRow key={`fdx-${row.日期}-${index}`}>
+                          <TableCell>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                  <DialogTitle>出厂精矿详情 - {row.日期}</DialogTitle>
+                                  <DialogDescription>
+                                    富鼎翔出厂精矿数据详细信息
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid grid-cols-2 gap-4 py-4">
+                                  <div className="space-y-2">
+                                    <Label>日期</Label>
+                                    <div className="p-2 bg-muted rounded">{row.日期}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>出厂湿重(t)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['出厂湿重(t)']}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>水份(%)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['水份(%)']}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>精矿Pb品位(%)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['精矿Pb品位(%)']}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>精矿Zn品位(%)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['精矿Zn品位(%)']}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Zn金属量(t)</Label>
+                                    <div className="p-2 bg-muted rounded">{row['Zn金属量(t)']}</div>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
                           <TableCell>{row.日期}</TableCell>
                           <TableCell>{row['出厂湿重(t)']}</TableCell>
                           <TableCell>{row['水份(%)']}</TableCell>
@@ -1332,44 +1475,42 @@ export default function OutgoingConcentrateDetailsPage() {
                 </div>
 
                 {/* 分页控制 */}
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    共 {processFdxTableData().length} 条记录
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      上一页
-                    </Button>
-                    <span className="text-sm">
-                      第 {currentPage} 页，共 {Math.ceil(processFdxTableData().length / itemsPerPage)} 页
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.min(Math.ceil(processFdxTableData().length / itemsPerPage), currentPage + 1))}
-                      disabled={currentPage >= Math.ceil(processFdxTableData().length / itemsPerPage)}
-                    >
-                      下一页
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                {(() => {
+                  const tableData = processFdxTableData();
+                  const totalPages = Math.ceil(tableData.length / itemsPerPage);
+
+                  if (totalPages <= 1) return null;
+
+                  return (
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        共 {tableData.length} 条记录，第 {currentPage} 页，共 {totalPages} 页
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          上一页
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          下一页
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </TabsContent>
             </Tabs>
-
-            {/* 导出按钮 */}
-            <div className="flex justify-end">
-              <Button variant="outline" className="gap-2" onClick={exportToExcel}>
-                <Download className="h-4 w-4" />
-                导出EXCEL
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>

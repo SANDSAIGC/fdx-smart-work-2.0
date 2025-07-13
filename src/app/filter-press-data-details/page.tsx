@@ -69,13 +69,9 @@ export default function FilterPressDataDetailsPage() {
   const [filterData, setFilterData] = useState<FilterPressData[]>([]);
   const [summaryData, setSummaryData] = useState<FilterPressSummaryData[]>([]);
 
-  // 趋势图日期范围
-  const [trendStartDate, setTrendStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return format(date, 'yyyy-MM-dd');
-  });
-  const [trendEndDate, setTrendEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  // 趋势图日期范围 - 压滤趋势总览：起始日期固定为2025-04-26，结束日期为当前日期
+  const [trendStartDate, setTrendStartDate] = useState('2025-04-26');
+  const [trendEndDate, setTrendEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // 单日详情日期 - 设置为前两日
   const [singleDate, setSingleDate] = useState(() => {
@@ -84,13 +80,9 @@ export default function FilterPressDataDetailsPage() {
     return format(date, 'yyyy-MM-dd');
   });
 
-  // 表格数据日期范围
-  const [tableStartDate, setTableStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return format(date, 'yyyy-MM-dd');
-  });
-  const [tableEndDate, setTableEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  // 表格数据日期范围 - 压滤数据汇总：起始日期固定为2025-04-26，结束日期为当前日期
+  const [tableStartDate, setTableStartDate] = useState('2025-04-26');
+  const [tableEndDate, setTableEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
@@ -106,16 +98,16 @@ export default function FilterPressDataDetailsPage() {
 
   // 日期快捷选择功能 - 趋势图
   const setDateRange = (days: number) => {
-    const endDate = format(new Date(), 'yyyy-MM-dd');
-    const startDate = format(new Date(Date.now() - days * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     setTrendStartDate(startDate);
     setTrendEndDate(endDate);
   };
 
   // 日期快捷选择功能 - 数据汇总表格
   const setTableDateRange = (days: number) => {
-    const endDate = format(new Date(), 'yyyy-MM-dd');
-    const startDate = format(new Date(Date.now() - days * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     setTableStartDate(startDate);
     setTableEndDate(endDate);
   };

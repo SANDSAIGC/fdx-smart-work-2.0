@@ -306,9 +306,13 @@ export default function ManagerPage() {
             <CalendarCheck className="w-5 h-5" />
             <span className="text-xs">考勤打卡</span>
           </Button>
-          <Button variant="ghost" className="flex flex-col items-center space-y-1 h-auto py-2">
-            <Settings className="w-5 h-5" />
-            <span className="text-xs">系统设置</span>
+          <Button
+            variant="ghost"
+            className="flex flex-col items-center space-y-1 h-auto py-2"
+            onClick={() => router.push("/account-management")}
+          >
+            <Users className="w-5 h-5" />
+            <span className="text-xs">账号管理</span>
           </Button>
         </div>
       </div>

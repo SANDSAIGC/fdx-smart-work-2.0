@@ -8,13 +8,52 @@ const TABLE_MAPPING = {
   'outgoing_sample': '出厂精矿-FDX'
 };
 
+// 重试函数
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 [Detail API] 尝试第 ${attempt} 次请求: ${url}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        console.log(`✅ [Detail API] 第 ${attempt} 次请求成功`);
+        return response;
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`⚠️ [Detail API] 第 ${attempt} 次请求失败:`, lastError.message);
+
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // 指数退避，最大5秒
+        console.log(`⏳ [Detail API] 等待 ${delay}ms 后重试...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError || new Error('所有重试都失败了');
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const sampleType = searchParams.get('sampleType');
     const id = searchParams.get('id');
 
-    console.log('Lab数据详情请求:', { sampleType, id });
+    console.log('📋 Lab数据详情请求:', { sampleType, id });
 
     if (!sampleType || !id) {
       return NextResponse.json(
@@ -45,25 +84,14 @@ export async function GET(request: NextRequest) {
 
     // 获取特定记录的完整数据
     const url = `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}?id=eq.${encodeURIComponent(id)}`;
-    
-    const response = await fetch(url, {
+
+    const response = await fetchWithRetry(url, {
       headers: {
         'apikey': anonKey,
         'Authorization': `Bearer ${anonKey}`,
         'Content-Type': 'application/json'
       }
     });
-
-    if (!response.ok) {
-      console.error('Supabase 查询错误:', {
-        status: response.status,
-        statusText: response.statusText
-      });
-      return NextResponse.json(
-        { success: false, error: `数据库查询失败: ${response.statusText}` },
-        { status: response.status }
-      );
-    }
 
     const data = await response.json();
     console.log('✅ 获取详细数据成功:', data);
@@ -88,9 +116,9 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : '服务器内部错误' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : '服务器内部错误'
       },
       { status: 500 }
     );

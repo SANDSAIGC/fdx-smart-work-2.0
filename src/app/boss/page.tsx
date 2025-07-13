@@ -1427,7 +1427,7 @@ export default function BossPage() {
                 className="relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 border-teal-500 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/20 dark:hover:bg-teal-950/30"
               >
                 <div className="flex flex-col items-center space-y-2">
-                  <Package className="h-6 w-6 text-teal-600" />
+                  <ShoppingCart className="h-6 w-6 text-teal-600" />
                   <span className="font-medium text-teal-700 dark:text-teal-400 text-sm">采购管理</span>
                 </div>
               </div>

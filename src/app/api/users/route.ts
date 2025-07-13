@@ -18,18 +18,14 @@ export async function GET(request: NextRequest) {
     const username = searchParams.get('username');
 
     // 构建查询URL - 使用URL编码的中文表名和标准化字段名
-    let queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('用户资料')}?select=id,账号,姓名,职称,部门,联系电话,微信号,重定向路由,avatar_url,created_at,updated_at`;
+    let queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('用户资料')}?select=id,账号,姓名,职称,部门,联系电话,微信号,重定向路由,avatar_url,created_at,updated_at,状态`;
 
     if (id) {
       queryUrl += `&id=eq.${id}`;
     } else if (username) {
       queryUrl += `&账号=eq.${username}`;
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: 'ID or username is required'
-      }, { status: 400 });
     }
+    // 如果没有指定id或username，则返回所有用户（用于账号管理）
 
     // 发送HTTP请求到Supabase，增加重试机制
     let response;

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { format } from 'date-fns';
 import { Header2 } from '@/components/headers';
 import {
   TruckIcon, RefreshCw, Calendar, PieChartIcon,
@@ -94,29 +93,19 @@ export default function ShiftReportDetailsPage() {
   const [jdxyData, setJdxyData] = useState<ShiftReportData[]>([]);
   const [klData, setKlData] = useState<ShiftReportData[]>([]);
   
-  // 趋势图日期范围
-  const [trendStartDate, setTrendStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return format(date, 'yyyy-MM-dd');
-  });
-  const [trendEndDate, setTrendEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
-  
-  // 单日详情日期 - 设置为前两日
+  // 趋势图日期范围 - 生产趋势总览组件
+  const [trendStartDate, setTrendStartDate] = useState('2025-04-26');
+  const [trendEndDate, setTrendEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // 单日详情日期 - 生产单日详情组件：设置为当前日期减去2天
   const [singleDate, setSingleDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 2);
-    return format(date, 'yyyy-MM-dd');
+    return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   });
   const [singleDayTab, setSingleDayTab] = useState('jdxy');
-  
-  // 表格数据日期范围
-  const [tableStartDate, setTableStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return format(date, 'yyyy-MM-dd');
-  });
-  const [tableEndDate, setTableEndDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+
+  // 表格数据日期范围 - 生产数据汇总组件
+  const [tableStartDate, setTableStartDate] = useState('2025-04-26');
+  const [tableEndDate, setTableEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState('jdxy');
 
   // 分页状态
@@ -133,16 +122,16 @@ export default function ShiftReportDetailsPage() {
 
   // 日期快捷选择功能 - 趋势图
   const setDateRange = (days: number) => {
-    const endDate = format(new Date(), 'yyyy-MM-dd');
-    const startDate = format(new Date(Date.now() - days * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     setTrendStartDate(startDate);
     setTrendEndDate(endDate);
   };
 
   // 日期快捷选择功能 - 数据汇总表格
   const setTableDateRange = (days: number) => {
-    const endDate = format(new Date(), 'yyyy-MM-dd');
-    const startDate = format(new Date(Date.now() - days * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     setTableStartDate(startDate);
     setTableEndDate(endDate);
   };
@@ -195,14 +184,9 @@ export default function ShiftReportDetailsPage() {
       ]);
 
       if (fdxResult.success && jdxyResult.success && klResult.success) {
-        console.log('=== API数据获取成功 ===');
-        console.log('富鼎翔API返回数据:', fdxResult.data);
-        console.log('金鼎API返回数据:', jdxyResult.data);
-        console.log('科力API返回数据:', klResult.data);
         setFdxData(fdxResult.data || []);
         setJdxyData(jdxyResult.data || []);
         setKlData(klResult.data || []);
-        console.log('=== 数据设置完成 ===');
       } else {
         console.error('数据获取失败:', fdxResult.error || jdxyResult.error || klResult.error);
       }
@@ -436,22 +420,61 @@ export default function ShiftReportDetailsPage() {
           recovery: 0, totalWeight: 0, totalConcentrate: 0, totalTailing: 0, count: 0
         });
 
+        // 智能计算平均值：优先加权平均，无权重时使用算术平均
+        const calculateSmartAverage = (fieldName, weightFieldName = '氧化锌原矿-湿重（t）') => {
+          const validItems = items.filter(item => item[fieldName] != null);
+          if (validItems.length === 0) return 0;
+
+          // 检查是否有重量数据可用于加权平均
+          const itemsWithWeight = validItems.filter(item => item[weightFieldName] != null && item[weightFieldName] > 0);
+
+          if (itemsWithWeight.length > 0) {
+            // 有重量数据，使用加权平均
+            const totalWeightedValue = itemsWithWeight.reduce((sum, item) => sum + (item[fieldName] * item[weightFieldName]), 0);
+            const totalWeight = itemsWithWeight.reduce((sum, item) => sum + item[weightFieldName], 0);
+
+            if (totalWeight > 0) {
+              // 如果所有有效记录都有重量，直接返回加权平均
+              if (itemsWithWeight.length === validItems.length) {
+                return totalWeightedValue / totalWeight;
+              }
+
+              // 如果只有部分记录有重量，需要混合计算
+              const itemsWithoutWeight = validItems.filter(item => item[weightFieldName] == null || item[weightFieldName] <= 0);
+              if (itemsWithoutWeight.length > 0) {
+                const weightedAverage = totalWeightedValue / totalWeight;
+                const simpleAverage = itemsWithoutWeight.reduce((sum, item) => sum + item[fieldName], 0) / itemsWithoutWeight.length;
+
+                // 按记录数量加权合并两种平均值
+                const weightedCount = itemsWithWeight.length;
+                const simpleCount = itemsWithoutWeight.length;
+                return (weightedAverage * weightedCount + simpleAverage * simpleCount) / (weightedCount + simpleCount);
+              }
+
+              return totalWeightedValue / totalWeight;
+            }
+          }
+
+          // 没有重量数据或重量数据无效，使用算术平均
+          return validItems.reduce((sum, item) => sum + item[fieldName], 0) / validItems.length;
+        };
+
         return {
           wetWeight: totals.wetWeight,
-          moisture: totals.totalWeight > 0 ? totals.moisture / totals.totalWeight : 0,
+          moisture: calculateSmartAverage('氧化锌原矿-水份（%）'),
           dryWeight: totals.dryWeight,
-          pbGrade: totals.totalWeight > 0 ? totals.pbGrade / totals.totalWeight : 0,
-          znGrade: totals.totalWeight > 0 ? totals.znGrade / totals.totalWeight : 0,
+          pbGrade: calculateSmartAverage('氧化锌原矿-Pb全品位（%）'),
+          znGrade: calculateSmartAverage('氧化锌原矿-Zn全品位（%）'),
           pbMetal: totals.pbMetal,
           znMetal: totals.znMetal,
           concentrateQuantity: totals.concentrateQuantity,
-          concentratePbGrade: totals.totalConcentrate > 0 ? totals.concentratePbGrade / totals.totalConcentrate : 0,
-          concentrateZnGrade: totals.totalConcentrate > 0 ? totals.concentrateZnGrade / totals.totalConcentrate : 0,
+          concentratePbGrade: calculateSmartAverage('氧化锌精矿-Pb品位（%）', '氧化锌精矿-数量（t）'),
+          concentrateZnGrade: calculateSmartAverage('氧化锌精矿-Zn品位（%）', '氧化锌精矿-数量（t）'),
           concentratePbMetal: totals.concentratePbMetal,
           concentrateZnMetal: totals.concentrateZnMetal,
           tailingQuantity: totals.tailingQuantity,
-          tailingPbGrade: totals.totalTailing > 0 ? totals.tailingPbGrade / totals.totalTailing : 0,
-          tailingZnGrade: totals.totalTailing > 0 ? totals.tailingZnGrade / totals.totalTailing : 0,
+          tailingPbGrade: calculateSmartAverage('尾矿-Pb全品位（%）', '尾矿-数量（t）'),
+          tailingZnGrade: calculateSmartAverage('尾矿-Zn全品位（%）', '尾矿-数量（t）'),
           tailingPbMetal: totals.tailingPbMetal,
           tailingZnMetal: totals.tailingZnMetal,
           recovery: totals.count > 0 ? totals.recovery / totals.count : 0
@@ -810,7 +833,7 @@ export default function ShiftReportDetailsPage() {
   useEffect(() => {
     fetchShiftReportData(trendStartDate, trendEndDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [trendStartDate, trendEndDate]);
 
   // 监听单日详情日期变化，自动获取数据
   useEffect(() => {

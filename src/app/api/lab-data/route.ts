@@ -265,26 +265,56 @@ export async function GET(request: NextRequest) {
 
     queryUrl += `&order=${orderField}.desc&limit=${limit}`;
 
-    // 发送HTTP请求到Supabase
-    const response = await fetch(queryUrl, {
-      method: 'GET',
-      headers: {
-        'apikey': anonKey,
-        'Authorization': `Bearer ${anonKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    // 发送HTTP请求到Supabase - 添加重试机制
+    let response;
+    let lastError;
+    const maxRetries = 3;
 
-    if (!response.ok) {
-      console.error('Supabase 查询错误:', response.status, response.statusText);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 [Lab API] 尝试第 ${attempt} 次请求: ${queryUrl}`);
+
+        response = await fetch(queryUrl, {
+          method: 'GET',
+          headers: {
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+            'Content-Type': 'application/json'
+          },
+          // 添加超时设置
+          signal: AbortSignal.timeout(10000) // 10秒超时
+        });
+
+        if (response.ok) {
+          console.log(`✅ [Lab API] 第 ${attempt} 次请求成功`);
+          break;
+        } else {
+          lastError = `HTTP ${response.status}: ${response.statusText}`;
+          console.warn(`⚠️ [Lab API] 第 ${attempt} 次请求失败: ${lastError}`);
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : 'Unknown error';
+        console.warn(`⚠️ [Lab API] 第 ${attempt} 次请求异常: ${lastError}`);
+
+        // 如果不是最后一次尝试，等待一段时间再重试
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 递增延迟
+        }
+      }
+    }
+
+    if (!response || !response.ok) {
+      console.error('🚫 [Lab API] 所有重试都失败了:', lastError);
       return NextResponse.json({
         success: false,
         error: 'Database query failed',
-        message: `查询失败: ${response.statusText}`
+        message: `查询失败: ${lastError}`,
+        retries: maxRetries
       }, { status: 500 });
     }
 
     const rawData = await response.json();
+    console.log(`📊 [Lab API] 获取到原始数据: ${rawData?.length || 0} 条记录`);
 
     // 转换数据格式
     let transformedData: any[] = [];
@@ -303,6 +333,8 @@ export async function GET(request: NextRequest) {
         break;
     }
 
+    console.log(`🔄 [Lab API] 转换后数据: ${transformedData.length} 条记录`);
+
     return NextResponse.json({
       success: true,
       data: transformedData,
@@ -313,12 +345,29 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Lab API 错误:', error);
+    console.error('🚫 [Lab API] 未捕获的错误:', error);
+
+    // 更详细的错误信息
+    let errorMessage = 'Unknown error';
+    let errorType = 'Internal server error';
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      if (error.name === 'AbortError') {
+        errorType = 'Request timeout';
+        errorMessage = '请求超时，请检查网络连接';
+      } else if (error.message.includes('fetch failed')) {
+        errorType = 'Network error';
+        errorMessage = '网络连接失败，请检查网络状态';
+      }
+    }
+
     return NextResponse.json(
       {
         success: false,
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        error: errorType,
+        message: errorMessage,
+        timestamp: new Date().toISOString()
       },
       { status: 500 }
     );
