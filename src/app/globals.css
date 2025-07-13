@@ -197,11 +197,11 @@
     font-size: 11px; /* 恢复原始字号 */
   }
 
-  /* 数据对比分析 - 柱状图文字样式（增大字号） */
+  /* 数据对比分析 - 柱状图文字样式（再次缩小字号） */
   .comparison-bar-label-text {
     fill: white;
     font-weight: 600;
-    font-size: 17px; /* 增加1.5倍字号：11px * 1.5 ≈ 17px */
+    font-size: 12px; /* 从15px进一步缩小到12px，确保完全显示 */
   }
 
   /* 确保在任何主题下文字都清晰可见 */
@@ -211,6 +211,25 @@
 
   .dark .comparison-bar-label-text {
     fill: white;
+  }
+
+  /* 数据对比分析 - 移动端响应式字号（基于12px调整） */
+  @media (max-width: 768px) {
+    .comparison-bar-label-text {
+      font-size: 10px; /* 平板端：12px * 0.83 ≈ 10px */
+    }
+  }
+
+  @media (max-width: 640px) {
+    .comparison-bar-label-text {
+      font-size: 9px; /* 小屏手机：12px * 0.75 ≈ 9px */
+    }
+  }
+
+  @media (max-width: 480px) {
+    .comparison-bar-label-text {
+      font-size: 8px; /* 超小屏手机：12px * 0.67 ≈ 8px */
+    }
   }
 
   /* 数据对比分析图表优化 */

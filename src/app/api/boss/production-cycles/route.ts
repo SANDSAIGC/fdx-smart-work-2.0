@@ -38,9 +38,36 @@ export async function GET(request: NextRequest) {
 
     // 提取唯一的生产周期
     const cycles = [...new Set(data.map((item: any) => item.生产周期).filter(Boolean))];
-    
-    // 添加"全部周期"选项
-    const cyclesWithAll = ['全部周期', ...cycles];
+
+    // 智能排序生产周期
+    const sortedCycles = cycles.sort((a: string, b: string) => {
+      // 提取周期中的数字进行排序
+      const extractNumber = (cycle: string): number => {
+        const match = cycle.match(/第(\d+)期|第([一二三四五六七八九十]+)期/);
+        if (match) {
+          if (match[1]) {
+            return parseInt(match[1], 10);
+          } else if (match[2]) {
+            // 中文数字转换
+            const chineseNumbers: { [key: string]: number } = {
+              '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+              '六': 6, '七': 7, '八': 8, '九': 9, '十': 10
+            };
+            return chineseNumbers[match[2]] || 0;
+          }
+        }
+        return 0;
+      };
+
+      const numA = extractNumber(a);
+      const numB = extractNumber(b);
+
+      // 按数字降序排列（第三期、第二期、第一期）
+      return numB - numA;
+    });
+
+    // 添加"全部周期"选项在最前面
+    const cyclesWithAll = ['全部周期', ...sortedCycles];
 
     return NextResponse.json({
       success: true,

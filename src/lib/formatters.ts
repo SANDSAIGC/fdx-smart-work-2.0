@@ -48,17 +48,17 @@ export function formatValue(value: number | string | null | undefined, unit?: st
   if (isNaN(numValue)) return '--';
   
   // 根据单位判断格式化方式
-  if (!unit) {
-    // 无单位时默认保留2位小数
+  if (!unit || typeof unit !== 'string') {
+    // 无单位或单位不是字符串时默认保留2位小数
     return numValue.toFixed(2);
   }
-  
+
   // 重量相关单位 - 保留3位小数
   const weightUnits = ['t', 'kg', 'g', 'ton', '吨', '千克', '克'];
   if (weightUnits.includes(unit.toLowerCase())) {
     return formatWeight(value, unit);
   }
-  
+
   // 百分比相关单位 - 保留2位小数
   const percentageUnits = ['%', 'percent', '百分比'];
   if (percentageUnits.includes(unit.toLowerCase())) {
@@ -113,7 +113,7 @@ export function formatTableValue(
  * @returns 是否为重量单位
  */
 export function isWeightUnit(unit?: string): boolean {
-  if (!unit) return false;
+  if (!unit || typeof unit !== 'string') return false;
   const weightUnits = ['t', 'kg', 'g', 'ton', '吨', '千克', '克'];
   return weightUnits.includes(unit.toLowerCase());
 }
@@ -124,7 +124,7 @@ export function isWeightUnit(unit?: string): boolean {
  * @returns 是否为百分比单位
  */
 export function isPercentageUnit(unit?: string): boolean {
-  if (!unit) return false;
+  if (!unit || typeof unit !== 'string') return false;
   const percentageUnits = ['%', 'percent', '百分比'];
   return percentageUnits.includes(unit.toLowerCase());
 }

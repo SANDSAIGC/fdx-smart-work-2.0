@@ -4,13 +4,13 @@ export async function POST(request: NextRequest) {
   try {
     const { startDate, endDate } = await request.json();
 
-    console.log(`🔄 [数据对比分析API] 请求参数:`, { startDate, endDate });
+    console.log(`🔄 [数据对比分析-富科API] 请求参数:`, { startDate, endDate });
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !anonKey) {
-      console.error('❌ [数据对比分析API] 数据库配置错误');
+      console.error('❌ [数据对比分析-富科API] 数据库配置错误');
       return NextResponse.json(
         { success: false, error: '数据库配置错误' },
         { status: 500 }
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const fetchWithRetry = async (url: string, description: string, retries = 2): Promise<any> => {
       for (let i = 0; i <= retries; i++) {
         try {
-          console.log(`🔍 [数据对比分析API] ${description} - 第${i + 1}次尝试:`, url);
+          console.log(`🔍 [数据对比分析-富科API] ${description} - 第${i + 1}次尝试:`, url);
 
           const response = await fetch(url, {
             headers: {
@@ -37,14 +37,14 @@ export async function POST(request: NextRequest) {
           }
 
           const data = await response.json();
-          console.log(`✅ [数据对比分析API] ${description} 查询成功:`, { recordCount: data.length });
+          console.log(`✅ [数据对比分析-富科API] ${description} 查询成功:`, { recordCount: data.length });
           return data;
         } catch (error) {
-          console.error(`❌ [数据对比分析API] ${description} - 第${i + 1}次尝试失败:`, error);
+          console.error(`❌ [数据对比分析-富科API] ${description} - 第${i + 1}次尝试失败:`, error);
 
           if (i === retries) {
             // 最后一次重试失败，返回空数组而不是抛出错误
-            console.log(`⚠️ [数据对比分析API] ${description} - 所有重试失败，返回空数据`);
+            console.log(`⚠️ [数据对比分析-富科API] ${description} - 所有重试失败，返回空数据`);
             return [];
           }
 
@@ -63,20 +63,26 @@ export async function POST(request: NextRequest) {
     const outgoingUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('出厂精矿对比')}?select=*&计量日期=gte.${startDate}&计量日期=lte.${endDate}&order=计量日期.asc`;
     const outgoingData = await fetchWithRetry(outgoingUrl, '出厂精矿对比数据');
 
-    // 获取生产班报对比-富金数据
-    const productionUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产班报对比-富金')}?select=*&日期=gte.${startDate}&日期=lte.${endDate}&order=日期.asc`;
-    const productionData = await fetchWithRetry(productionUrl, '生产班报对比-富金数据');
+    // 获取生产班报对比-富科数据（富科专用）
+    const productionUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产班报对比-富科')}?select=*&日期=gte.${startDate}&日期=lte.${endDate}&order=日期.asc`;
+    const productionData = await fetchWithRetry(productionUrl, '生产班报对比-富科数据');
+
+    // 获取浓细度对比数据（富科专用）
+    const concentrationUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('浓细度对比')}?select=*&日期=gte.${startDate}&日期=lte.${endDate}&order=日期.asc`;
+    const concentrationData = await fetchWithRetry(concentrationUrl, '浓细度对比数据');
 
     const result = {
       incoming: incomingData,
       outgoing: outgoingData,
-      production: productionData
+      production: productionData,
+      concentration: concentrationData // 富科专用的浓细度数据
     };
 
-    console.log(`✅ [数据对比分析API] 数据汇总:`, {
+    console.log(`✅ [数据对比分析-富科API] 数据汇总:`, {
       incoming: incomingData.length,
       outgoing: outgoingData.length,
       production: productionData.length,
+      concentration: concentrationData.length,
       dateRange: `${startDate} 至 ${endDate}`
     });
 
@@ -86,7 +92,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ [数据对比分析API] 获取对比数据失败:', error);
+    console.error('❌ [数据对比分析-富科API] 获取对比数据失败:', error);
 
     // 即使出错也返回空数据结构，避免前端崩溃
     return NextResponse.json({
@@ -94,7 +100,8 @@ export async function POST(request: NextRequest) {
       data: {
         incoming: [],
         outgoing: [],
-        production: []
+        production: [],
+        concentration: []
       }
     });
   }

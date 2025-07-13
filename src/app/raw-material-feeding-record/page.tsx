@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { AuthGuard } from '@/components/auth-guard';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
@@ -55,7 +56,7 @@ interface ProductionShiftReport {
   updated_at?: string;
 }
 
-export default function RawMaterialFeedingRecordPage() {
+function RawMaterialFeedingRecordPageContent() {
   const router = useRouter();
   
   // 表单状态
@@ -961,5 +962,13 @@ function EditRecordForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+export default function RawMaterialFeedingRecordPage() {
+  return (
+    <AuthGuard>
+      <RawMaterialFeedingRecordPageContent />
+    </AuthGuard>
   );
 }

@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Header2 } from "@/components/headers";
 import { Footer } from "@/components/ui/footer";
+import { AuthGuard } from "@/components/auth-guard";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, ReferenceLine, ReferenceArea } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, LabelList, Label as RechartsLabel } from 'recharts';
@@ -97,7 +98,7 @@ const CONCENTRATION_STANDARDS = {
   }
 };
 
-export default function ConcentrationFinenessMonitorPage() {
+function ConcentrationFinenessMonitorPageContent() {
   // 数据状态
   const [fdxData, setFdxData] = useState<ConcentrationFinenessData[]>([]);
   const [klData, setKlData] = useState<ConcentrationFinenessData[]>([]);
@@ -1573,5 +1574,13 @@ export default function ConcentrationFinenessMonitorPage() {
       {/* Footer */}
       <Footer />
     </div>
+  );
+}
+
+export default function ConcentrationFinenessMonitorPage() {
+  return (
+    <AuthGuard>
+      <ConcentrationFinenessMonitorPageContent />
+    </AuthGuard>
   );
 }

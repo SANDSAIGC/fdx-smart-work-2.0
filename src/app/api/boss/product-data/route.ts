@@ -59,7 +59,10 @@ export async function POST(request: NextRequest) {
     // 使用标准的JSON解析方法
     const { cycle } = await request.json();
 
+    console.log(`🔄 [产品数据API] 请求参数:`, { cycle });
+
     if (!cycle) {
+      console.error('❌ [产品数据API] 缺少生产周期参数');
       return NextResponse.json(
         { success: false, message: '生产周期是必需的' },
         { status: 400 }
@@ -71,11 +74,51 @@ export async function POST(request: NextRequest) {
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !anonKey) {
+      console.error('❌ [产品数据API] 数据库配置错误');
       return NextResponse.json(
         { success: false, message: 'Environment variables not configured' },
         { status: 500 }
       );
     }
+
+    // 定义重试函数
+    const fetchWithRetry = async (url: string, description: string, retries = 2): Promise<any> => {
+      for (let i = 0; i <= retries; i++) {
+        try {
+          console.log(`🔍 [产品数据API] ${description} - 第${i + 1}次尝试:`, url);
+
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'apikey': anonKey,
+              'Authorization': `Bearer ${anonKey}`,
+              'Content-Type': 'application/json'
+            },
+            signal: AbortSignal.timeout(30000) // 30秒超时
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          console.log(`✅ [产品数据API] ${description} 查询成功:`, { recordCount: data.length });
+          return data;
+        } catch (error) {
+          console.error(`❌ [产品数据API] ${description} - 第${i + 1}次尝试失败:`, error);
+
+          if (i === retries) {
+            // 最后一次重试失败，返回空数组而不是抛出错误
+            console.log(`⚠️ [产品数据API] ${description} - 所有重试失败，返回空数据`);
+            return [];
+          }
+
+          // 等待1秒后重试
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      return [];
+    };
 
     // 构建查询URL - 查询产品累计表
     let fdxQueryUrl, jdxyQueryUrl;
@@ -90,49 +133,30 @@ export async function POST(request: NextRequest) {
       jdxyQueryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('产品累计-JDXY')}?select=*&生产周期=eq.${encodeURIComponent(cycle)}`;
     }
 
-    // 并行查询富鼎翔和金鼎锌业数据
-    const [fdxResponse, jdxyResponse] = await Promise.all([
-      // 查询产品累计-FDX表
-      fetch(fdxQueryUrl, {
-        method: 'GET',
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        signal: AbortSignal.timeout(30000) // 30秒超时
-      }),
-      // 查询产品累计-JDXY表
-      fetch(jdxyQueryUrl, {
-        method: 'GET',
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        signal: AbortSignal.timeout(30000) // 30秒超时
-      })
+    // 并行查询富鼎翔和金鼎锌业数据（带重试机制）
+    const [fdxData, jdxyData] = await Promise.all([
+      fetchWithRetry(fdxQueryUrl, '产品累计-FDX数据'),
+      fetchWithRetry(jdxyQueryUrl, '产品累计-JDXY数据')
     ]);
-
-    if (!fdxResponse.ok || !jdxyResponse.ok) {
-      console.error('查询产品累计数据失败:', fdxResponse.status, jdxyResponse.status);
-      return NextResponse.json(
-        { success: false, message: '查询失败' },
-        { status: 500 }
-      );
-    }
-
-    const fdxData = await fdxResponse.json();
-    const jdxyData = await jdxyResponse.json();
 
     // 处理数据聚合
     let processedFdxData = null;
     let processedJdxyData = null;
 
+    console.log(`📊 [产品数据API] 原始数据统计:`, {
+      fdxRecords: fdxData.length,
+      jdxyRecords: jdxyData.length,
+      cycle
+    });
+
     if (cycle === '全部周期') {
       // 全部周期时进行聚合计算
       processedFdxData = aggregateProductData(fdxData);
       processedJdxyData = aggregateProductData(jdxyData);
+      console.log(`🔄 [产品数据API] 聚合计算完成:`, {
+        fdxAggregated: !!processedFdxData,
+        jdxyAggregated: !!processedJdxyData
+      });
     } else {
       // 特定周期时直接使用查询结果
       if (fdxData && fdxData.length > 0) {
@@ -144,6 +168,9 @@ export async function POST(request: NextRequest) {
           '期末有效库存': parseFloat(fdxRecord.期末有效库存) || 0,
           '期末总库存': parseFloat(fdxRecord.期末总库存) || 0
         };
+        console.log(`✅ [产品数据API] FDX数据处理完成:`, processedFdxData);
+      } else {
+        console.log(`⚠️ [产品数据API] FDX数据为空`);
       }
 
       if (jdxyData && jdxyData.length > 0) {
@@ -155,22 +182,38 @@ export async function POST(request: NextRequest) {
           '期末有效库存': parseFloat(jdxyRecord.期末有效库存) || 0,
           '期末总库存': parseFloat(jdxyRecord.期末总库存) || 0
         };
+        console.log(`✅ [产品数据API] JDXY数据处理完成:`, processedJdxyData);
+      } else {
+        console.log(`⚠️ [产品数据API] JDXY数据为空`);
       }
     }
 
+    const result = {
+      fdx: processedFdxData,
+      jdxy: processedJdxyData
+    };
+
+    console.log(`✅ [产品数据API] 数据汇总完成:`, {
+      cycle,
+      hasFdxData: !!processedFdxData,
+      hasJdxyData: !!processedJdxyData
+    });
+
     return NextResponse.json({
       success: true,
-      data: {
-        fdx: processedFdxData,
-        jdxy: processedJdxyData
-      }
+      data: result
     });
 
   } catch (error) {
-    console.error('获取产品数据失败:', error);
-    return NextResponse.json(
-      { success: false, message: '服务器内部错误' },
-      { status: 500 }
-    );
+    console.error('❌ [产品数据API] 获取产品数据失败:', error);
+
+    // 即使出错也返回空数据结构，避免前端崩溃
+    return NextResponse.json({
+      success: true,
+      data: {
+        fdx: null,
+        jdxy: null
+      }
+    });
   }
 }

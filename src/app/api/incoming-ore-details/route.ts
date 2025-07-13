@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { startDate, endDate, dataSource } = await request.json();
-    
+    const { startDate, endDate, dataSource, getLatestDate } = await request.json();
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -16,15 +16,40 @@ export async function POST(request: NextRequest) {
 
     // 根据数据源选择表名
     const tableName = dataSource === 'fdx' ? '进厂原矿-FDX' : '进厂原矿-JDXY';
-    
+
+    // 如果是获取最新日期的请求
+    if (getLatestDate) {
+      const latestDateUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}?select=计量日期&order=计量日期.desc&limit=1`;
+
+      const latestResponse = await fetch(latestDateUrl, {
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!latestResponse.ok) {
+        throw new Error(`获取${tableName}最新日期失败: ${latestResponse.statusText}`);
+      }
+
+      const latestData = await latestResponse.json();
+      const latestDate = latestData.length > 0 ? latestData[0].计量日期 : null;
+
+      return NextResponse.json({
+        success: true,
+        latestDate: latestDate
+      });
+    }
+
     // 构建查询URL
     let queryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent(tableName)}?select=*`;
-    
+
     // 添加日期范围筛选
     if (startDate && endDate) {
       queryUrl += `&计量日期=gte.${startDate}&计量日期=lte.${endDate}`;
     }
-    
+
     // 添加排序
     queryUrl += `&order=计量日期.desc`;
 

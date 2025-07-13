@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { AuthGuard } from '@/components/auth-guard';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
@@ -48,7 +49,7 @@ interface User {
   重定向路由?: string;
 }
 
-export default function FilterPressWorkshopPage() {
+function FilterPressWorkshopPageContent() {
   const router = useRouter();
 
   // 用户状态
@@ -883,5 +884,13 @@ export default function FilterPressWorkshopPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function FilterPressWorkshopPage() {
+  return (
+    <AuthGuard>
+      <FilterPressWorkshopPageContent />
+    </AuthGuard>
   );
 }

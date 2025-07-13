@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Calendar, BarChart3 } from "lucide-react";
 import { ChartBarNegative } from "@/components/charts/ChartBarNegative";
 import { formatValue, formatWeight, formatPercentage } from "@/lib/formatters";
@@ -20,6 +21,13 @@ interface DataVsFukeProps {
   badgeClassName?: string;
   onRefresh?: () => Promise<void>;
   isRefreshing?: boolean;
+  // 生产周期相关props
+  productionCycles?: string[];
+  selectedCycle?: string;
+  onCycleChange?: (cycle: string) => void;
+  comparisonStartDate?: Date;
+  comparisonEndDate?: Date;
+  onDateChange?: (startDate: Date | undefined, endDate: Date | undefined) => void;
 }
 
 // 格式化日期范围显示
@@ -208,15 +216,22 @@ export default function DataVsFuke({
   badgeVariant = "default",
   badgeClassName = "",
   onRefresh,
-  isRefreshing = false
+  isRefreshing = false,
+  // 生产周期相关props
+  productionCycles = [],
+  selectedCycle = "全部周期",
+  onCycleChange,
+  comparisonStartDate: propComparisonStartDate,
+  comparisonEndDate: propComparisonEndDate,
+  onDateChange
 }: DataVsFukeProps) {
-  // 日期状态管理
-  const [comparisonStartDate, setComparisonStartDate] = useState<Date | undefined>(() => {
+  // 使用从props传入的日期，如果没有则使用默认值
+  const comparisonStartDate = propComparisonStartDate || (() => {
     const date = new Date();
-    date.setDate(date.getDate() - 7); // 默认最近一周
+    date.setDate(date.getDate() - 7);
     return date;
-  });
-  const [comparisonEndDate, setComparisonEndDate] = useState<Date | undefined>(() => new Date());
+  })();
+  const comparisonEndDate = propComparisonEndDate || new Date();
 
   // 数据状态管理
   const [productionData, setProductionData] = useState<any[]>([]);
@@ -229,9 +244,10 @@ export default function DataVsFuke({
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - days);
-    setComparisonStartDate(start);
-    setComparisonEndDate(end);
-  }, []);
+    if (onDateChange) {
+      onDateChange(start, end);
+    }
+  }, [onDateChange]);
 
   // 获取生产数据
   const fetchProductionData = useCallback(async () => {
@@ -344,6 +360,28 @@ export default function DataVsFuke({
             数据对比日期范围
           </h3>
           <div className="space-y-4">
+            {/* 生产周期选择器 */}
+            {productionCycles.length > 0 && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">生产周期</label>
+                <Select value={selectedCycle} onValueChange={onCycleChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="选择生产周期" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productionCycles.map((cycle) => (
+                      <SelectItem key={cycle} value={cycle}>
+                        {cycle === '全部周期' ? '全部周期 (聚合数据)' : `生产周期: ${cycle}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground mt-1">
+                  选择生产周期后，日期范围将自动同步
+                </div>
+              </div>
+            )}
+
             {/* 日期输入 */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
@@ -351,7 +389,7 @@ export default function DataVsFuke({
                 <Input
                   type="date"
                   value={comparisonStartDate ? comparisonStartDate.toISOString().split('T')[0] : ""}
-                  onChange={(e) => setComparisonStartDate(e.target.value ? new Date(e.target.value) : undefined)}
+                  onChange={(e) => onDateChange && onDateChange(e.target.value ? new Date(e.target.value) : undefined, comparisonEndDate)}
                   className="w-full"
                 />
               </div>
@@ -360,7 +398,7 @@ export default function DataVsFuke({
                 <Input
                   type="date"
                   value={comparisonEndDate ? comparisonEndDate.toISOString().split('T')[0] : ""}
-                  onChange={(e) => setComparisonEndDate(e.target.value ? new Date(e.target.value) : undefined)}
+                  onChange={(e) => onDateChange && onDateChange(comparisonStartDate, e.target.value ? new Date(e.target.value) : undefined)}
                   className="w-full"
                 />
               </div>

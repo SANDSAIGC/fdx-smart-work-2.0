@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { 
@@ -39,7 +40,11 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   Table as TableIcon,
-  Download
+  Download,
+  Eye,
+  Save,
+  X,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -83,22 +88,77 @@ export default function IncomingOreDetailsPage() {
   const [activeTab, setActiveTab] = useState('jdxy'); // 'jdxy' 或 'fdx'
   const [singleDayTab, setSingleDayTab] = useState('jdxy'); // 单日详情选项卡状态
   
-  // 日期状态
-  const [trendStartDate, setTrendStartDate] = useState(format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
-  const [trendEndDate, setTrendEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [singleDate, setSingleDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [tableStartDate, setTableStartDate] = useState(format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
-  const [tableEndDate, setTableEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  // 获取当前日期的函数
+  const getCurrentDate = () => format(new Date(), 'yyyy-MM-dd');
+
+  // 日期状态 - 使用默认值配置
+  const [trendStartDate, setTrendStartDate] = useState('2025-04-26'); // 进厂趋势总览默认起始日期
+  const [trendEndDate, setTrendEndDate] = useState(getCurrentDate()); // 进厂趋势总览默认结束日期
+  const [singleDate, setSingleDate] = useState(getCurrentDate()); // 进厂单日详情默认日期（将从数据库获取最新日期）
+  const [tableStartDate, setTableStartDate] = useState('2025-04-26'); // 进厂数据汇总默认起始日期
+  const [tableEndDate, setTableEndDate] = useState(getCurrentDate()); // 进厂数据汇总默认结束日期
+
+  // 编辑弹窗状态
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<IncomingOreData | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // 排序状态
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   // 排序函数
   const toggleSort = () => {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    setCurrentPage(1); // 重置到第一页
   };
 
-  // 获取最新日期并设置为默认值
+  // 分页相关函数
+  const getPaginatedData = (data: any[]) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (data: any[]) => {
+    return Math.ceil(data.length / itemsPerPage);
+  };
+
+  // 获取数据库中最新日期的函数
+  const fetchLatestDate = useCallback(async () => {
+    try {
+      const response = await fetch('/api/incoming-ore-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dataSource: 'jdxy',
+          getLatestDate: true // 添加标识获取最新日期
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.latestDate) {
+          console.log('获取到最新日期:', result.latestDate);
+          setSingleDate(result.latestDate);
+          return result.latestDate;
+        }
+      }
+    } catch (error) {
+      console.error('获取最新日期失败:', error);
+    }
+
+    // 如果获取失败，回退到当前日期
+    const fallbackDate = getCurrentDate();
+    console.log('回退到当前日期:', fallbackDate);
+    setSingleDate(fallbackDate);
+    return fallbackDate;
+  }, []);
+
+  // 获取最新日期并设置为默认值（保留原有逻辑作为备用）
   const updateSingleDateToLatest = useCallback(() => {
     if (jdxyData.length > 0) {
       const latestDate = jdxyData
@@ -109,6 +169,58 @@ export default function IncomingOreDetailsPage() {
       }
     }
   }, [jdxyData]);
+
+  // 打开编辑弹窗
+  const handleEditRecord = useCallback((record: IncomingOreData) => {
+    setEditingRecord(record);
+    setIsEditDialogOpen(true);
+  }, []);
+
+  // 保存编辑
+  const handleSaveEdit = useCallback(async (updatedRecord: IncomingOreData) => {
+    if (!updatedRecord) return;
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch('/api/incoming-ore-details', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: updatedRecord.id,
+          dataSource: updatedRecord.dataSource || 'jdxy',
+          data: updatedRecord
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          console.log('数据更新成功');
+          setIsEditDialogOpen(false);
+          setEditingRecord(null);
+          // 重新获取数据
+          fetchIncomingOreData(tableStartDate, tableEndDate);
+        } else {
+          console.error('更新失败:', result.error);
+          alert('更新失败: ' + result.error);
+        }
+      } else {
+        console.error('更新请求失败:', response.statusText);
+        alert('更新请求失败');
+      }
+    } catch (error) {
+      console.error('更新数据失败:', error);
+      alert('更新失败，请重试');
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [tableStartDate, tableEndDate]);
+
+  // 取消编辑
+  const handleCancelEdit = useCallback(() => {
+    setIsEditDialogOpen(false);
+    setEditingRecord(null);
+  }, []);
 
   // 日期快捷选择功能 - 趋势图
   const setDateRange = (days: number) => {
@@ -158,7 +270,7 @@ export default function IncomingOreDetailsPage() {
       headers.join(','),
       ...data.map(item => [
         item.计量日期,
-        item.进厂湿重.toFixed(2),
+        item.进厂湿重.toFixed(3),
         item.水份.toFixed(2),
         item.Pb.toFixed(2),
         item.Zn.toFixed(2),
@@ -692,7 +804,7 @@ export default function IncomingOreDetailsPage() {
                     {data.name}
                   </span>
                   <span className="font-bold text-muted-foreground">
-                    {data.actualValue.toFixed(2)}{data.unit}
+                    {data.unit === 't' ? data.actualValue.toFixed(3) : data.actualValue.toFixed(2)}{data.unit}
                   </span>
                 </div>
               </div>
@@ -741,7 +853,7 @@ export default function IncomingOreDetailsPage() {
                             y={viewBox.cy}
                             className="fill-foreground text-2xl font-bold"
                           >
-                            {data.value.toFixed(1)}
+                            {data.unit === 't' ? data.value.toFixed(3) : data.value.toFixed(2)}
                           </tspan>
                           <tspan
                             x={viewBox.cx}
@@ -761,7 +873,7 @@ export default function IncomingOreDetailsPage() {
         </CardContent>
         <CardFooter className="flex-col gap-2 pt-4">
           <div className="text-sm font-medium text-center">
-            当前: {data.value.toFixed(2)}{data.unit}
+            当前: {data.unit === 't' ? data.value.toFixed(3) : data.value.toFixed(2)}{data.unit}
           </div>
         </CardFooter>
       </Card>
@@ -772,7 +884,15 @@ export default function IncomingOreDetailsPage() {
 
   // 初始化数据加载
   useEffect(() => {
-    fetchIncomingOreData(trendStartDate, trendEndDate);
+    const initializeData = async () => {
+      // 1. 首先获取最新日期用于单日详情
+      await fetchLatestDate();
+
+      // 2. 然后获取趋势数据
+      fetchIncomingOreData(trendStartDate, trendEndDate);
+    };
+
+    initializeData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1122,16 +1242,27 @@ export default function IncomingOreDetailsPage() {
                 <TableIcon className="h-5 w-5 text-primary" />
                 <CardTitle>进厂数据汇总</CardTitle>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={refreshTableData}
-                disabled={isLoading}
-                className="h-8 w-8"
-                title="刷新表格数据"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToExcel}
+                  className="text-xs"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  导出EXCEL
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={refreshTableData}
+                  disabled={isLoading}
+                  className="h-8 w-8"
+                  title="刷新表格数据"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
             <CardDescription>查看和管理进厂原矿数据记录</CardDescription>
           </CardHeader>
@@ -1208,6 +1339,7 @@ export default function IncomingOreDetailsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[100px]">操作</TableHead>
                         <TableHead
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={toggleSort}
@@ -1222,10 +1354,22 @@ export default function IncomingOreDetailsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {processTableData().map((item, index) => (
+                      {getPaginatedData(processTableData()).map((item, index) => (
                         <TableRow key={`jdxy-aggregated-${item.计量日期}-${index}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditRecord({ ...item, dataSource: 'jdxy' })}
+                                title="编辑"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                           <TableCell>{item.计量日期}</TableCell>
-                          <TableCell>{item.进厂湿重.toFixed(2)}</TableCell>
+                          <TableCell>{item.进厂湿重.toFixed(3)}</TableCell>
                           <TableCell>{item.水份.toFixed(2)}</TableCell>
                           <TableCell>{item.Pb.toFixed(2)}</TableCell>
                           <TableCell>{item.Zn.toFixed(2)}</TableCell>
@@ -1236,6 +1380,46 @@ export default function IncomingOreDetailsPage() {
                       ))}
                     </TableBody>
                   </Table>
+
+                  {/* 分页控件 */}
+                  {processTableData().length > itemsPerPage && (
+                    <div className="flex items-center justify-between px-2 py-4">
+                      <div className="text-sm text-muted-foreground">
+                        显示 {((currentPage - 1) * itemsPerPage) + 1} 到 {Math.min(currentPage * itemsPerPage, processTableData().length)} 条，共 {processTableData().length} 条记录
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                        >
+                          上一页
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: getTotalPages(processTableData()) }, (_, i) => i + 1).map((page) => (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          ))}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, getTotalPages(processTableData())))}
+                          disabled={currentPage === getTotalPages(processTableData())}
+                        >
+                          下一页
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 
@@ -1245,6 +1429,7 @@ export default function IncomingOreDetailsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[100px]">操作</TableHead>
                         <TableHead
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={toggleSort}
@@ -1259,10 +1444,22 @@ export default function IncomingOreDetailsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {processFdxTableData().map((item, index) => (
+                      {getPaginatedData(processFdxTableData()).map((item, index) => (
                         <TableRow key={`fdx-aggregated-${item.计量日期}-${index}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditRecord({ ...item, dataSource: 'fdx' })}
+                                title="编辑"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                           <TableCell>{item.计量日期}</TableCell>
-                          <TableCell>{item.进厂湿重.toFixed(2)}</TableCell>
+                          <TableCell>{item.进厂湿重.toFixed(3)}</TableCell>
                           <TableCell>{item.水份.toFixed(2)}</TableCell>
                           <TableCell>{item.Pb.toFixed(2)}</TableCell>
                           <TableCell>{item.Zn.toFixed(2)}</TableCell>
@@ -1273,29 +1470,197 @@ export default function IncomingOreDetailsPage() {
                       ))}
                     </TableBody>
                   </Table>
+
+                  {/* 分页控件 */}
+                  {processFdxTableData().length > itemsPerPage && (
+                    <div className="flex items-center justify-between px-2 py-4">
+                      <div className="text-sm text-muted-foreground">
+                        显示 {((currentPage - 1) * itemsPerPage) + 1} 到 {Math.min(currentPage * itemsPerPage, processFdxTableData().length)} 条，共 {processFdxTableData().length} 条记录
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                        >
+                          上一页
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: getTotalPages(processFdxTableData()) }, (_, i) => i + 1).map((page) => (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          ))}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, getTotalPages(processFdxTableData())))}
+                          disabled={currentPage === getTotalPages(processFdxTableData())}
+                        >
+                          下一页
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
 
-            {/* 导出按钮 */}
-            <div className="flex justify-end">
-              <Button
-                onClick={exportToExcel}
-                disabled={isLoading}
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                导出表格
-              </Button>
-            </div>
+
           </CardContent>
         </Card>
       </div>
 
 
 
+      {/* 编辑弹窗 */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Eye className="h-5 w-5 text-primary" />
+              <span>编辑进厂原矿数据</span>
+            </DialogTitle>
+          </DialogHeader>
+          {editingRecord && (
+            <EditRecordForm
+              record={editingRecord}
+              onSave={handleSaveEdit}
+              onCancel={handleCancelEdit}
+              isUpdating={isUpdating}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Footer组件 */}
       <Footer />
     </div>
+  );
+}
+
+// 编辑记录表单组件
+function EditRecordForm({
+  record,
+  onSave,
+  onCancel,
+  isUpdating
+}: {
+  record: IncomingOreData;
+  onSave: (updatedRecord: IncomingOreData) => void;
+  onCancel: () => void;
+  isUpdating: boolean;
+}) {
+  const [formData, setFormData] = useState<IncomingOreData>(record);
+
+  const handleFieldChange = (field: string, value: string) => {
+    if (field === '计量日期') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    } else {
+      const numValue = parseFloat(value) || 0;
+      // 根据字段类型应用相应的精度格式化
+      let formattedValue = numValue;
+      if (field === '进厂湿重') {
+        // 重量保留三位小数
+        formattedValue = parseFloat(numValue.toFixed(3));
+      } else if (field === '水份' || field === 'Pb' || field === 'Zn') {
+        // 水份/品位保留两位小数
+        formattedValue = parseFloat(numValue.toFixed(2));
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        [field]: formattedValue
+      }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  const fields = [
+    { key: '计量日期', label: '计量日期', type: 'date' },
+    { key: '进厂湿重', label: '进厂湿重 (吨)', type: 'number', step: '0.001' },
+    { key: '水份', label: '水份 (%)', type: 'number', step: '0.01' },
+    { key: 'Pb', label: 'Pb品位 (%)', type: 'number', step: '0.01' },
+    { key: 'Zn', label: 'Zn品位 (%)', type: 'number', step: '0.01' }
+  ];
+
+  // 格式化显示值的函数
+  const getDisplayValue = (field: string, value: any) => {
+    if (field === '计量日期') {
+      return value || '';
+    }
+    if (value === null || value === undefined || value === '') {
+      return '';
+    }
+    const numValue = Number(value);
+    if (isNaN(numValue)) {
+      return '';
+    }
+
+    // 根据字段类型返回格式化的显示值
+    if (field === '进厂湿重') {
+      return numValue.toFixed(3);
+    } else if (field === '水份' || field === 'Pb' || field === 'Zn') {
+      return numValue.toFixed(2);
+    }
+    return value.toString();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {fields.map((field) => (
+          <div key={field.key} className="space-y-2">
+            <Label className="flex items-center">
+              <span>{field.label}</span>
+            </Label>
+            <Input
+              type={field.type}
+              step={field.step}
+              value={getDisplayValue(field.key, formData[field.key])}
+              onChange={(e) => handleFieldChange(field.key, e.target.value)}
+              placeholder={`请输入${field.label}`}
+              className="font-medium"
+              required
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-end space-x-2 pt-4 border-t">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isUpdating}>
+          <X className="mr-2 h-4 w-4" />
+          取消
+        </Button>
+        <Button type="submit" disabled={isUpdating}>
+          {isUpdating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              保存中...
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              保存修改
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
   );
 }

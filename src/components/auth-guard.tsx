@@ -31,7 +31,9 @@ export function AuthGuard({
         hasUser: !!user,
         hasSession: !!session,
         hasRedirected,
-        currentPath: window.location.pathname
+        currentPath: window.location.pathname,
+        sessionExpiry: session ? new Date(session.expiresAt).toISOString() : 'N/A',
+        currentTime: new Date().toISOString()
       });
 
       // 如果不需要认证，直接通过
@@ -46,13 +48,51 @@ export function AuthGuard({
         return;
       }
 
-      // 如果用户已认证，直接通过
-      if (isAuthenticated && user && session) {
+      // 简化的认证检查：检查localStorage中是否有用户信息
+      const localUserId = localStorage.getItem('fdx_current_user_id');
+      const localUser = localStorage.getItem('fdx_user');
+      const localSession = localStorage.getItem('fdx_session_data');
+
+      console.log('🔍 [AuthGuard] 本地存储检查:', {
+        hasLocalUserId: !!localUserId,
+        hasLocalUser: !!localUser,
+        hasLocalSession: !!localSession,
+        localUserId: localUserId
+      });
+
+      // 如果本地存储中有用户信息，认为用户已认证
+      if (localUserId && localUser && localSession) {
+        try {
+          const sessionData = JSON.parse(localSession);
+          const currentTime = Date.now();
+
+          // 检查会话是否过期
+          if (sessionData.expiresAt && sessionData.expiresAt > currentTime) {
+            console.log('✅ [AuthGuard] 本地会话有效，允许访问');
+            console.log('👤 [AuthGuard] 本地用户ID:', localUserId);
+            setHasRedirected(false); // 重置重定向标志
+            return;
+          } else {
+            console.log('⏰ [AuthGuard] 本地会话已过期');
+          }
+        } catch (error) {
+          console.error('❌ [AuthGuard] 解析本地会话数据失败:', error);
+        }
+      }
+
+      // 检查会话是否过期
+      if (session && session.expiresAt <= Date.now()) {
+        console.log('⏰ [AuthGuard] 会话已过期，需要重新登录');
+        console.log('🕐 [AuthGuard] 会话过期时间:', new Date(session.expiresAt).toISOString());
+        console.log('🕐 [AuthGuard] 当前时间:', new Date().toISOString());
+        // 会话过期，需要重新登录
+      } else if (isAuthenticated && user && session) {
         console.log('✅ [AuthGuard] 用户已认证，直接渲染页面');
         console.log('👤 [AuthGuard] 用户信息:', {
           userId: user.id,
           username: user.username,
-          sessionValid: !!session.token
+          sessionValid: !!session.token,
+          sessionExpiry: new Date(session.expiresAt).toISOString()
         });
         setHasRedirected(false); // 重置重定向标志
         return;
@@ -74,6 +114,15 @@ export function AuthGuard({
       // 保存当前页面路径作为重定向参数
       console.log('❌ [AuthGuard] 用户未认证，准备重定向');
       console.log('🔄 [AuthGuard] 保存原始访问路径:', currentPath);
+      console.log('🔍 [AuthGuard] 未认证原因分析:', {
+        hasUser: !!user,
+        hasSession: !!session,
+        isAuthenticated,
+        sessionExpired: session ? session.expiresAt <= Date.now() : 'N/A',
+        hasLocalUserId: !!localUserId,
+        hasLocalUser: !!localUser,
+        hasLocalSession: !!localSession
+      });
 
       const redirectUrl = `${redirectTo}?redirect=${encodeURIComponent(currentPath)}`;
       console.log('🚀 [AuthGuard] 重定向到:', redirectUrl);
@@ -109,6 +158,30 @@ export function AuthGuard({
   if (isAuthenticated && user && session) {
     console.log('🎯 [AuthGuard] 认证通过，渲染页面内容');
     return <>{children}</>;
+  }
+
+  // 用户未认证，检查本地存储作为备用方案
+  const localUserId = localStorage.getItem('fdx_current_user_id');
+  const localUser = localStorage.getItem('fdx_user');
+  const localSession = localStorage.getItem('fdx_session_data');
+
+  if (localUserId && localUser && localSession) {
+    try {
+      const sessionData = JSON.parse(localSession);
+      const currentTime = Date.now();
+
+      // 检查会话是否过期
+      if (sessionData.expiresAt && sessionData.expiresAt > currentTime) {
+        console.log('✅ [AuthGuard] 本地会话有效，允许访问页面');
+        console.log('👤 [AuthGuard] 本地用户ID:', localUserId);
+        // 本地会话有效，直接渲染页面
+        return <>{children}</>;
+      } else {
+        console.log('⏰ [AuthGuard] 本地会话已过期');
+      }
+    } catch (error) {
+      console.error('❌ [AuthGuard] 解析本地会话数据失败:', error);
+    }
   }
 
   // 用户未认证，显示fallback或空内容（重定向已在useEffect中处理）

@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PaginatedTable } from "@/components/ui/paginated-table";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Chart components
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
@@ -38,6 +40,13 @@ interface DataVs1Props {
     production: { originalOre: any[] };
     outgoing: { gradeAndMoisture: any[]; weightAndMetal: any[] };
   };
+  // 生产周期相关props
+  productionCycles?: string[];
+  selectedCycle?: string;
+  onCycleChange?: (cycle: string) => void;
+  comparisonStartDate?: Date;
+  comparisonEndDate?: Date;
+  onDateChange?: (startDate: Date | undefined, endDate: Date | undefined) => void;
 }
 
 // 图表配置
@@ -441,24 +450,32 @@ export default function DataVs1({
     incoming: { gradeAndMoisture: [] },
     production: { originalOre: [] },
     outgoing: { gradeAndMoisture: [], weightAndMetal: [] }
-  }
+  },
+  // 生产周期相关props
+  productionCycles = [],
+  selectedCycle = "全部周期",
+  onCycleChange,
+  comparisonStartDate: propComparisonStartDate,
+  comparisonEndDate: propComparisonEndDate,
+  onDateChange
 }: DataVs1Props) {
-  // 日期状态管理
-  const [comparisonStartDate, setComparisonStartDate] = useState<Date | undefined>(() => {
+  // 使用从props传入的日期，如果没有则使用默认值
+  const comparisonStartDate = propComparisonStartDate || (() => {
     const date = new Date();
-    date.setDate(date.getDate() - 7); // 默认最近一周
+    date.setDate(date.getDate() - 7);
     return date;
-  });
-  const [comparisonEndDate, setComparisonEndDate] = useState<Date | undefined>(() => new Date());
+  })();
+  const comparisonEndDate = propComparisonEndDate || new Date();
 
   // 快速日期选择功能
   const setComparisonQuickDateRange = useCallback((days: number) => {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - days);
-    setComparisonStartDate(start);
-    setComparisonEndDate(end);
-  }, []);
+    if (onDateChange) {
+      onDateChange(start, end);
+    }
+  }, [onDateChange]);
 
   // 生成趋势文本
   const generateSingleTrendText = useCallback((data: any[], jindingKey: string, fudingxiangKey: string, isPercentage: boolean = false) => {
@@ -531,6 +548,28 @@ export default function DataVs1({
             数据对比日期范围
           </h3>
           <div className="space-y-4">
+            {/* 生产周期选择器 */}
+            {productionCycles.length > 0 && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">生产周期</label>
+                <Select value={selectedCycle} onValueChange={onCycleChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="选择生产周期" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productionCycles.map((cycle) => (
+                      <SelectItem key={cycle} value={cycle}>
+                        {cycle === '全部周期' ? '全部周期 (聚合数据)' : `生产周期: ${cycle}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground mt-1">
+                  选择生产周期后，日期范围将自动同步
+                </div>
+              </div>
+            )}
+
             {/* 日期输入 */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
@@ -538,7 +577,7 @@ export default function DataVs1({
                 <Input
                   type="date"
                   value={comparisonStartDate ? comparisonStartDate.toISOString().split('T')[0] : ""}
-                  onChange={(e) => setComparisonStartDate(e.target.value ? new Date(e.target.value) : undefined)}
+                  onChange={(e) => onDateChange && onDateChange(e.target.value ? new Date(e.target.value) : undefined, comparisonEndDate)}
                   className="w-full"
                 />
               </div>
@@ -547,7 +586,7 @@ export default function DataVs1({
                 <Input
                   type="date"
                   value={comparisonEndDate ? comparisonEndDate.toISOString().split('T')[0] : ""}
-                  onChange={(e) => setComparisonEndDate(e.target.value ? new Date(e.target.value) : undefined)}
+                  onChange={(e) => onDateChange && onDateChange(comparisonStartDate, e.target.value ? new Date(e.target.value) : undefined)}
                   className="w-full"
                 />
               </div>
@@ -620,61 +659,62 @@ export default function DataVs1({
 
               {/* 进厂数据表格 */}
               <div className="mt-6">
-                <h4 className="text-sm font-medium mb-3">进厂原矿差值数据</h4>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-center">日期</TableHead>
-                        <TableHead className="text-center">湿重(t)</TableHead>
-                        <TableHead className="text-center">水份(%)</TableHead>
-                        <TableHead className="text-center">干重(t)</TableHead>
-                        <TableHead className="text-center">Pb^M(t)</TableHead>
-                        <TableHead className="text-center">Zn^M(t)</TableHead>
-                        <TableHead className="text-center">发货单位</TableHead>
-                        <TableHead className="text-center">收货单位</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {comparisonData.incoming && comparisonData.incoming.length > 0 ? (
-                        comparisonData.incoming.map((item: any) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="text-center font-medium">
-                              {item.计量日期 || '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['湿重(t)'] !== undefined ? `${item['湿重(t)']}t` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['水份(%)'] !== undefined ? `${item['水份(%)']}%` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['干重(t)'] !== undefined ? `${item['干重(t)']}t` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['Pb^M'] !== undefined ? `${item['Pb^M']}t` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['Zn^M'] !== undefined ? `${item['Zn^M']}t` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item.发货单位名称 || '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item.收货单位名称 || '--'}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground py-4">
-                            暂无进厂原矿对比数据
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                <PaginatedTable
+                  data={comparisonData.incoming || []}
+                  columns={[
+                    {
+                      key: '计量日期',
+                      label: '日期'
+                    },
+                    {
+                      key: '湿重(t)',
+                      label: '湿重(t)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(3) : '--'
+                    },
+                    {
+                      key: '水份(%)',
+                      label: '水份(%)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                    },
+                    {
+                      key: '干重(t)',
+                      label: '干重(t)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(3) : '--'
+                    },
+                    {
+                      key: 'Pb^M',
+                      label: 'Pb^M(t)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(3) : '--'
+                    },
+                    {
+                      key: 'Zn^M',
+                      label: 'Zn^M(t)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(3) : '--'
+                    },
+                    {
+                      key: '发货单位名称',
+                      label: '发货单位'
+                    },
+                    {
+                      key: '收货单位名称',
+                      label: '收货单位'
+                    }
+                  ]}
+                  title="进厂原矿差值数据"
+                  emptyMessage="暂无进厂原矿对比数据"
+                  exportFileName={`进厂原矿对比数据_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                  detailFields={[
+                    { key: '计量日期', label: '计量日期' },
+                    { key: '湿重(t)', label: '湿重(t)' },
+                    { key: '水份(%)', label: '水份(%)' },
+                    { key: '干重(t)', label: '干重(t)' },
+                    { key: 'Pb^M', label: 'Pb^M(t)' },
+                    { key: 'Zn^M', label: 'Zn^M(t)' },
+                    { key: '发货单位名称', label: '发货单位' },
+                    { key: '收货单位名称', label: '收货单位' },
+                    { key: '备注', label: '备注' }
+                  ]}
+                />
               </div>
             </div>
           </TabsContent>
@@ -762,61 +802,62 @@ export default function DataVs1({
 
               {/* 生产数据表格 */}
               <div className="mt-6">
-                <h4 className="text-sm font-medium mb-3">生产班样差值数据</h4>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-center">日期</TableHead>
-                        <TableHead className="text-center">班次</TableHead>
-                        <TableHead className="text-center">原矿水份(%)</TableHead>
-                        <TableHead className="text-center">原矿Pb品位(%)</TableHead>
-                        <TableHead className="text-center">原矿Zn品位(%)</TableHead>
-                        <TableHead className="text-center">精矿Pb品位(%)</TableHead>
-                        <TableHead className="text-center">精矿Zn品位(%)</TableHead>
-                        <TableHead className="text-center">Zn回收率(%)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {comparisonData.production && comparisonData.production.length > 0 ? (
-                        comparisonData.production.map((item: any) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="text-center font-medium">
-                              {item.日期 || '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item.班次 || '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['氧化锌原矿-水份（%）'] !== undefined ? `${item['氧化锌原矿-水份（%）']}%` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['氧化锌原矿-Pb全品位（%）'] !== undefined ? `${item['氧化锌原矿-Pb全品位（%）']}%` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['氧化锌原矿-Zn全品位（%）'] !== undefined ? `${item['氧化锌原矿-Zn全品位（%）']}%` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['氧化锌精矿-Pb品位（%）'] !== undefined ? `${item['氧化锌精矿-Pb品位（%）']}%` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['氧化锌精矿-Zn品位（%）'] !== undefined ? `${item['氧化锌精矿-Zn品位（%）']}%` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['氧化矿Zn理论回收率（%）'] !== undefined ? `${item['氧化矿Zn理论回收率（%）']}%` : '--'}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground py-4">
-                            暂无生产班样对比数据
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                <PaginatedTable
+                  data={comparisonData.production || []}
+                  columns={[
+                    {
+                      key: '日期',
+                      label: '日期'
+                    },
+                    {
+                      key: '班次',
+                      label: '班次'
+                    },
+                    {
+                      key: '氧化锌原矿-水份（%）',
+                      label: '原矿水份(%)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                    },
+                    {
+                      key: '氧化锌原矿-Pb全品位（%）',
+                      label: '原矿Pb品位(%)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                    },
+                    {
+                      key: '氧化锌原矿-Zn全品位（%）',
+                      label: '原矿Zn品位(%)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                    },
+                    {
+                      key: '氧化锌精矿-Pb品位（%）',
+                      label: '精矿Pb品位(%)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                    },
+                    {
+                      key: '氧化锌精矿-Zn品位（%）',
+                      label: '精矿Zn品位(%)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                    },
+                    {
+                      key: '氧化矿Zn理论回收率（%）',
+                      label: 'Zn回收率(%)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                    }
+                  ]}
+                  title="生产班样差值数据"
+                  emptyMessage="暂无生产班样对比数据"
+                  exportFileName={`生产班样对比数据_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                  detailFields={[
+                    { key: '日期', label: '日期' },
+                    { key: '班次', label: '班次' },
+                    { key: '氧化锌原矿-水份（%）', label: '原矿水份(%)' },
+                    { key: '氧化锌原矿-Pb全品位（%）', label: '原矿Pb品位(%)' },
+                    { key: '氧化锌原矿-Zn全品位（%）', label: '原矿Zn品位(%)' },
+                    { key: '氧化锌精矿-Pb品位（%）', label: '精矿Pb品位(%)' },
+                    { key: '氧化锌精矿-Zn品位（%）', label: '精矿Zn品位(%)' },
+                    { key: '氧化矿Zn理论回收率（%）', label: 'Zn回收率(%)' }
+                  ]}
+                />
               </div>
             </div>
           </TabsContent>
@@ -843,65 +884,67 @@ export default function DataVs1({
 
               {/* 出厂数据表格 */}
               <div className="mt-6">
-                <h4 className="text-sm font-medium mb-3">出厂精矿差值数据</h4>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-center">日期</TableHead>
-                        <TableHead className="text-center">湿重(t)</TableHead>
-                        <TableHead className="text-center">水份(%)</TableHead>
-                        <TableHead className="text-center">干重(t)</TableHead>
-                        <TableHead className="text-center">Pb^M(t)</TableHead>
-                        <TableHead className="text-center">Zn^M(t)</TableHead>
-                        <TableHead className="text-center">发货单位</TableHead>
-                        <TableHead className="text-center">收货单位</TableHead>
-                        <TableHead className="text-center">流向</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {comparisonData.outgoing && comparisonData.outgoing.length > 0 ? (
-                        comparisonData.outgoing.map((item: any) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="text-center font-medium">
-                              {item.计量日期 || '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['湿重(t)'] !== undefined ? `${item['湿重(t)']}t` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['水份(%)'] !== undefined ? `${item['水份(%)']}%` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['干重(t)'] !== undefined ? `${item['干重(t)']}t` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['Pb^M'] !== undefined ? `${item['Pb^M']}t` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item['Zn^M'] !== undefined ? `${item['Zn^M']}t` : '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item.发货单位名称 || '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item.收货单位名称 || '--'}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item.流向 || '--'}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={9} className="text-center text-muted-foreground py-4">
-                            暂无出厂精矿对比数据
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                <PaginatedTable
+                  data={comparisonData.outgoing || []}
+                  columns={[
+                    {
+                      key: '计量日期',
+                      label: '日期'
+                    },
+                    {
+                      key: '湿重(t)',
+                      label: '湿重(t)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(3) : '--'
+                    },
+                    {
+                      key: '水份(%)',
+                      label: '水份(%)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                    },
+                    {
+                      key: '干重(t)',
+                      label: '干重(t)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(3) : '--'
+                    },
+                    {
+                      key: 'Pb^M',
+                      label: 'Pb^M(t)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(3) : '--'
+                    },
+                    {
+                      key: 'Zn^M',
+                      label: 'Zn^M(t)',
+                      render: (value) => value !== undefined ? Number(value).toFixed(3) : '--'
+                    },
+                    {
+                      key: '发货单位名称',
+                      label: '发货单位'
+                    },
+                    {
+                      key: '收货单位名称',
+                      label: '收货单位'
+                    },
+                    {
+                      key: '流向',
+                      label: '流向'
+                    }
+                  ]}
+                  title="出厂精矿差值数据"
+                  emptyMessage="暂无出厂精矿对比数据"
+                  exportFileName={`出厂精矿对比数据_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                  detailFields={[
+                    { key: '计量日期', label: '计量日期' },
+                    { key: '湿重(t)', label: '湿重(t)' },
+                    { key: '水份(%)', label: '水份(%)' },
+                    { key: '干重(t)', label: '干重(t)' },
+                    { key: 'Pb^M', label: 'Pb^M(t)' },
+                    { key: 'Zn^M', label: 'Zn^M(t)' },
+                    { key: '发货单位名称', label: '发货单位' },
+                    { key: '收货单位名称', label: '收货单位' },
+                    { key: '流向', label: '流向' },
+                    { key: '备注', label: '备注' }
+                  ]}
+                />
               </div>
             </div>
           </TabsContent>

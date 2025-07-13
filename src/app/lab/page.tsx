@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Footer } from "@/components/ui/footer";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PaginatedTable } from "@/components/ui/paginated-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import {
@@ -18,6 +19,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -25,6 +27,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Beaker,
   Clock,
@@ -46,7 +55,12 @@ import {
   Mountain,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Download,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  TruckIcon
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -284,12 +298,8 @@ const chartConfig = {
 
 // 模拟数据生成函数
 const generateMockData = (startDate?: Date, endDate?: Date) => {
-  // 如果没有提供日期范围，默认使用最近30天
-  const start = startDate || (() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 29);
-    return date;
-  })();
+  // 如果没有提供日期范围，默认使用全部周期范围
+  const start = startDate || new Date('2025-04-26');
   const end = endDate || new Date();
 
   // 计算日期范围内的所有日期
@@ -527,31 +537,24 @@ function LabPageContent() {
   // 图表数据状态
   const [chartData, setChartData] = useState(() => generateMockData());
 
-  // 对比数据状态
-  const [comparisonData, setComparisonData] = useState<any>({
-    incoming: [],
-    outgoing: [],
-    production: []
+
+
+  // 富科专用图表数据状态
+  const [fdxChartData, setFdxChartData] = useState<any>({
+    production: [],
+    concentration: []
   });
 
-  // 日期选择状态
+  // 日期选择状态 - 默认为全部周期的日期范围
   const [startDate, setStartDate] = useState<Date | undefined>(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7); // 默认最近一周
-    return date;
+    // 全部周期开始日期：2025年4月26日
+    return new Date('2025-04-26');
   });
   const [endDate, setEndDate] = useState<Date | undefined>(() => new Date());
 
-  // 数据对比分析专用日期范围状态
-  const [comparisonStartDate, setComparisonStartDate] = useState<Date | undefined>(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30); // 默认最近30天
-    return date;
-  });
-  const [comparisonEndDate, setComparisonEndDate] = useState<Date | undefined>(() => new Date());
 
-  // 数据对比分析刷新状态
-  const [isRefreshingComparison, setIsRefreshingComparison] = useState(false);
+
+
 
   // 快速日期选择功能
   const setQuickDateRange = useCallback((days: number) => {
@@ -562,14 +565,15 @@ function LabPageContent() {
     setEndDate(end);
   }, []);
 
-  // 数据对比分析专用快速日期选择功能
-  const setComparisonQuickDateRange = useCallback((days: number) => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - days);
-    setComparisonStartDate(start);
-    setComparisonEndDate(end);
-  }, []);
+
+
+
+
+
+
+
+
+
 
   // 通过API获取进厂数据
   const fetchIncomingData = useCallback(async (startDate: Date, endDate: Date) => {
@@ -701,31 +705,7 @@ function LabPageContent() {
     }
   }, []);
 
-  // 获取对比数据
-  const fetchComparisonData = useCallback(async (startDate: Date, endDate: Date) => {
-    try {
-      const response = await fetch('/api/lab/comparison-data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0]
-        })
-      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      return result.data || { incoming: [], outgoing: [], production: [] };
-    } catch (error) {
-      console.error('获取对比数据失败:', error);
-      return { incoming: [], outgoing: [], production: [] };
-    }
-  }, []);
 
   // 转换Supabase数据为图表数据格式 - 重新设计为分别从不同数据表获取数据
   const transformSupabaseDataToChartData = useCallback((jindingData: any, fdxData: any) => {
@@ -906,60 +886,55 @@ function LabPageContent() {
     };
   }, []);
 
-  // 根据日期范围更新图表数据
-  const updateChartDataByDateRange = useCallback(async () => {
-    if (comparisonStartDate && comparisonEndDate) {
-      try {
-        // 获取JDXY、FDX和对比数据
-        const [jindingData, fdxData, comparisonDataResult] = await Promise.all([
-          fetchJDXYData(comparisonStartDate, comparisonEndDate),
-          fetchFDXData(comparisonStartDate, comparisonEndDate),
-          fetchComparisonData(comparisonStartDate, comparisonEndDate)
-        ]);
 
-        // 检查是否有数据
-        const hasData = jindingData.incoming?.length > 0 || jindingData.outgoing?.length > 0 || jindingData.production?.length > 0 ||
-                       fdxData.incoming?.length > 0 || fdxData.outgoing?.length > 0 || fdxData.production?.length > 0 || fdxData.internalSample?.length > 0;
 
-        if (!hasData) {
-          // 如果没有真实数据，使用模拟数据
-          const newChartData = generateMockData(comparisonStartDate, comparisonEndDate);
-          setChartData(newChartData);
-        } else {
-          // 转换真实数据为图表格式
-          const transformedData = transformSupabaseDataToChartData(jindingData, fdxData);
-          setChartData(transformedData);
+  // 处理富科数据转换为图表格式
+  const processFdxDataForCharts = useCallback((productionData: any[], concentrationData: any[]) => {
+    console.log(`🔄 [富科图表数据处理] 开始处理数据:`, {
+      productionCount: productionData.length,
+      concentrationCount: concentrationData.length
+    });
 
-          // 设置对比数据
-          setComparisonData(comparisonDataResult);
-        }
-      } catch (error) {
-        console.error('更新图表数据失败:', error);
-        // 出错时使用模拟数据
-        const newChartData = generateMockData(comparisonStartDate, comparisonEndDate);
-        setChartData(newChartData);
-      }
-    }
-  }, [comparisonStartDate, comparisonEndDate, fetchJDXYData, fetchFDXData, fetchComparisonData]);
+    // 处理生产数据
+    const processedProductionData = productionData.map((item: any) => ({
+      date: item.日期,
+      班次: item.班次,
+      // 原矿数据
+      原矿水份: item['氧化锌原矿-水份（%）'] || 0,
+      原矿Pb品位: item['氧化锌原矿-Pb全品位（%）'] || 0,
+      原矿Zn品位: item['氧化锌原矿-Zn全品位（%）'] || 0,
+      // 精矿数据
+      精矿Pb品位: item['氧化锌精矿-Pb品位（%）'] || 0,
+      精矿Zn品位: item['氧化锌精矿-Zn品位（%）'] || 0,
+      // 回收率数据
+      Zn回收率: item['氧化矿Zn理论回收率（%）'] || 0
+    }));
 
-  // 手动刷新数据对比分析数据
-  const refreshComparisonData = useCallback(async () => {
-    if (!comparisonStartDate || !comparisonEndDate) return;
+    // 处理浓细度数据
+    const processedConcentrationData = concentrationData.map((item: any) => ({
+      date: item.日期,
+      班次: item.班次,
+      浓度: item['浓度(%)'] || 0,
+      细度: item['细度(%)'] || 0
+    }));
 
-    setIsRefreshingComparison(true);
-    try {
-      await updateChartDataByDateRange();
-    } catch (error) {
-      console.error('刷新数据对比分析数据失败:', error);
-    } finally {
-      setIsRefreshingComparison(false);
-    }
-  }, [comparisonStartDate, comparisonEndDate, updateChartDataByDateRange]);
+    const result = {
+      production: processedProductionData,
+      concentration: processedConcentrationData
+    };
 
-  // 监听日期变化，自动更新图表数据
-  useEffect(() => {
-    updateChartDataByDateRange();
-  }, [updateChartDataByDateRange]);
+    console.log(`✅ [富科图表数据处理] 处理完成:`, {
+      productionProcessed: result.production.length,
+      concentrationProcessed: result.concentration.length
+    });
+
+    return result;
+  }, []);
+
+
+
+
+
 
 
 
@@ -1456,7 +1431,7 @@ function LabPageContent() {
                       displayValue = value || '--';
                       break;
                     case 'number':
-                      displayValue = formatValue(value, 2);
+                      displayValue = formatValue(value, undefined, 2);
                       break;
                     default:
                       displayValue = value || '--';
@@ -1657,7 +1632,11 @@ function LabPageContent() {
     const initializePage = async () => {
       setIsInitialLoading(true);
       try {
-        await fetchData();
+        // 并行获取数据和生产周期列表
+        await Promise.all([
+          fetchData(),
+          fetchProductionCycles()
+        ]);
       } catch (error) {
         console.error('页面初始化失败:', error);
       } finally {
@@ -1666,7 +1645,7 @@ function LabPageContent() {
     };
 
     initializePage();
-  }, [fetchData]);
+  }, [fetchData, fetchProductionCycles]);
 
   // 监听数据源变化，自动刷新数据
   useEffect(() => {
@@ -1997,158 +1976,78 @@ function LabPageContent() {
         </CardContent>
       </Card>
 
-      {/* 数据对比模块 */}
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              数据对比分析
-            </CardTitle>
-            <CardDescription>
-              金鼎 VS 富鼎翔各环节数据对比
-            </CardDescription>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshComparisonData}
-              disabled={isRefreshingComparison}
-              className="flex-1 sm:flex-none"
-            >
-              <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshingComparison ? 'animate-spin' : ''}`} />
-              刷新数据
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* 数据对比分析专用日期范围选择器 */}
-          <div className="mb-6 p-4 bg-muted/30 rounded-lg">
-            <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              数据对比日期范围
-            </h3>
-            <div className="space-y-4">
-              {/* 日期输入 */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <label className="text-xs text-muted-foreground mb-1 block">开始日期</label>
-                  <Input
-                    type="date"
-                    value={comparisonStartDate ? comparisonStartDate.toISOString().split('T')[0] : ""}
-                    onChange={(e) => setComparisonStartDate(e.target.value ? new Date(e.target.value) : undefined)}
-                    className="w-full"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs text-muted-foreground mb-1 block">结束日期</label>
-                  <Input
-                    type="date"
-                    value={comparisonEndDate ? comparisonEndDate.toISOString().split('T')[0] : ""}
-                    onChange={(e) => setComparisonEndDate(e.target.value ? new Date(e.target.value) : undefined)}
-                    className="w-full"
-                  />
-                </div>
-              </div>
 
-              {/* 快速选择按钮 */}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setComparisonQuickDateRange(7)}
-                  className="text-xs"
-                >
-                  最近一周
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setComparisonQuickDateRange(30)}
-                  className="text-xs"
-                >
-                  最近一月
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setComparisonQuickDateRange(90)}
-                  className="text-xs"
-                >
-                  最近三月
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setComparisonQuickDateRange(180)}
-                  className="text-xs"
-                >
-                  最近半年
-                </Button>
 
-              </div>
-            </div>
-          </div>
 
-          <Tabs defaultValue="incoming" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="incoming">进厂数据</TabsTrigger>
-              <TabsTrigger value="production">生产数据</TabsTrigger>
-              <TabsTrigger value="outgoing">出厂数据</TabsTrigger>
-            </TabsList>
 
-            <TabsContent value="incoming" className="mt-4">
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">进厂原矿数据趋势对比</h3>
+
+
                 <Carousel className="w-full">
                   <CarouselContent>
                     <CarouselItem>
                       <ComparisonChart
-                        data={chartData.incoming.gradeAndMoisture}
-                        title="品位对比"
-                        description="金鼎 VS 富鼎翔进厂原矿品位对比"
+                        data={fdxChartData.production}
+                        title="原矿水份%趋势"
+                        description="富科原矿水份数据趋势"
                         lines={[
-                          { dataKey: "jinding_grade" },
-                          { dataKey: "fudingxiang_grade" },
+                          { dataKey: "原矿水份", name: "原矿水份(%)" },
                         ]}
-                        trendText={generateSingleTrendText(chartData.incoming.gradeAndMoisture, "jinding_grade", "fudingxiang_grade", true)}
+                        trendText="显示富科原矿水份变化趋势"
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
-                        data={chartData.incoming.gradeAndMoisture}
-                        title="水份对比"
-                        description="金鼎 VS 富鼎翔进厂原矿水份对比"
+                        data={fdxChartData.production}
+                        title="原矿Zn品位%趋势"
+                        description="富科原矿Zn品位数据趋势"
                         lines={[
-                          { dataKey: "jinding_moisture" },
-                          { dataKey: "fudingxiang_moisture" },
+                          { dataKey: "原矿Zn品位", name: "原矿Zn品位(%)" },
                         ]}
-                        trendText={generateSingleTrendText(chartData.incoming.gradeAndMoisture, "jinding_moisture", "fudingxiang_moisture", true)}
+                        trendText="显示富科原矿Zn品位变化趋势"
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
-                        data={chartData.incoming.weightAndMetal}
-                        title="湿重对比"
-                        description="金鼎 VS 富鼎翔进厂原矿湿重对比"
+                        data={fdxChartData.production}
+                        title="原矿Pb品位%趋势"
+                        description="富科原矿Pb品位数据趋势"
                         lines={[
-                          { dataKey: "jinding_weight" },
-                          { dataKey: "fudingxiang_weight" },
+                          { dataKey: "原矿Pb品位", name: "原矿Pb品位(%)" },
                         ]}
-                        trendText={generateSingleTrendText(chartData.incoming.weightAndMetal, "jinding_weight", "fudingxiang_weight", false)}
+                        trendText="显示富科原矿Pb品位变化趋势"
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
-                        data={chartData.incoming.weightAndMetal}
-                        title="金属量对比"
-                        description="金鼎 VS 富鼎翔进厂原矿金属量对比"
+                        data={fdxChartData.production}
+                        title="精矿Zn品位%趋势"
+                        description="富科精矿Zn品位数据趋势"
                         lines={[
-                          { dataKey: "jinding_metal" },
-                          { dataKey: "fudingxiang_metal" },
+                          { dataKey: "精矿Zn品位", name: "精矿Zn品位(%)" },
                         ]}
-                        trendText={generateSingleTrendText(chartData.incoming.weightAndMetal, "jinding_metal", "fudingxiang_metal", false)}
+                        trendText="显示富科精矿Zn品位变化趋势"
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={fdxChartData.production}
+                        title="精矿Pb品位%趋势"
+                        description="富科精矿Pb品位数据趋势"
+                        lines={[
+                          { dataKey: "精矿Pb品位", name: "精矿Pb品位(%)" },
+                        ]}
+                        trendText="显示富科精矿Pb品位变化趋势"
+                      />
+                    </CarouselItem>
+                    <CarouselItem>
+                      <ComparisonChart
+                        data={fdxChartData.production}
+                        title="Zn回收率%趋势"
+                        description="富科Zn金属回收效率指标趋势"
+                        lines={[
+                          { dataKey: "Zn回收率", name: "Zn回收率(%)" },
+                        ]}
+                        trendText="显示富科Zn回收率变化趋势"
                       />
                     </CarouselItem>
                   </CarouselContent>
@@ -2156,174 +2055,166 @@ function LabPageContent() {
                   <CarouselNext />
                 </Carousel>
 
-                {/* 进厂数据表格 */}
-                <div className="mt-6">
-                  <h4 className="text-sm font-medium mb-3">进厂原矿差值数据</h4>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-center">日期</TableHead>
-                          <TableHead className="text-center">品位差值(%)</TableHead>
-                          <TableHead className="text-center">水分差值(%)</TableHead>
-                          <TableHead className="text-center">重量差值(t)</TableHead>
-                          <TableHead className="text-center">金属量差值(t)</TableHead>
-                          <TableHead className="text-center">发货单位</TableHead>
-                          <TableHead className="text-center">收货单位</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {comparisonData.incoming && comparisonData.incoming.length > 0 ? (
-                          comparisonData.incoming.map((item: any) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="text-center font-medium">
-                                {new Date(item.计量日期).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item.zn ? Number(item.zn).toFixed(2) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['水份(%)'] ? Number(item['水份(%)']).toFixed(2) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['湿重(t)'] ? Number(item['湿重(t)']).toFixed(1) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['Zn^M'] ? Number(item['Zn^M']).toFixed(1) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">{item.发货单位名称 || '--'}</TableCell>
-                              <TableCell className="text-center">{item.收货单位名称 || '--'}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
+                {/* 生产班样差值数据表格 - 完全符合班样详情页面设计 */}
+                <Card className="mt-6">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <TruckIcon className="h-5 w-5 text-primary" />
+                        <CardTitle>生产班样差值数据</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => exportProductionComparisonToExcel()}
+                          className="text-xs"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          导出EXCEL
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={refreshComparisonData}
+                          disabled={isRefreshingComparison}
+                          className="h-8 w-8"
+                          title="刷新生产班样差值数据"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${isRefreshingComparison ? 'animate-spin' : ''}`} />
+                        </Button>
+                      </div>
+                    </div>
+                    <CardDescription>查看和管理生产班样差值数据记录</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center text-muted-foreground py-4">
-                              暂无进厂原矿对比数据
-                            </TableCell>
+                            <TableHead>操作</TableHead>
+                            <TableHead
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => toggleProductionSort()}
+                            >
+                              日期 {productionSortOrder === 'desc' ? '↓' : '↑'}
+                            </TableHead>
+                            <TableHead>班次</TableHead>
+                            <TableHead>原矿水分差值(%)</TableHead>
+                            <TableHead>原矿Zn品位差值(%)</TableHead>
+                            <TableHead>精矿Zn品位差值(%)</TableHead>
+                            <TableHead>Zn回收率差值(%)</TableHead>
                           </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
+                        </TableHeader>
+                        <TableBody>
+                          {getProductionTableData()
+                            .slice((productionCurrentPage - 1) * productionItemsPerPage, productionCurrentPage * productionItemsPerPage)
+                            .map((item: any, index: number) => (
+                              <TableRow key={`production-${item.id}-${index}`}>
+                                <TableCell>
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="ghost" size="sm">
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    </DialogTrigger>
+                                    <ProductionDetailDialog data={item} />
+                                  </Dialog>
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {new Date(item.日期).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell>{item.班次 || '--'}</TableCell>
+                                <TableCell>
+                                  {item['氧化锌原矿-水份（%）'] ? Number(item['氧化锌原矿-水份（%）']).toFixed(2) : '--'}
+                                </TableCell>
+                                <TableCell>
+                                  {item['氧化锌原矿-Zn全品位（%）'] ? Number(item['氧化锌原矿-Zn全品位（%）']).toFixed(2) : '--'}
+                                </TableCell>
+                                <TableCell>
+                                  {item['氧化锌精矿-Zn品位（%）'] ? Number(item['氧化锌精矿-Zn品位（%）']).toFixed(2) : '--'}
+                                </TableCell>
+                                <TableCell>
+                                  {item['氧化矿Zn理论回收率（%）'] ? Number(item['氧化矿Zn理论回收率（%）']).toFixed(2) : '--'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          {(!comparisonData.production || comparisonData.production.length === 0) && (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center text-muted-foreground py-4">
+                                暂无生产班样对比数据
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* 分页控制 */}
+                    {(() => {
+                      const tableData = getProductionTableData();
+                      const totalPages = Math.ceil(tableData.length / productionItemsPerPage);
+
+                      if (totalPages <= 1) return null;
+
+                      return (
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-muted-foreground">
+                            共 {tableData.length} 条记录，第 {productionCurrentPage} 页，共 {totalPages} 页
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setProductionCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={productionCurrentPage === 1}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                              上一页
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setProductionCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={productionCurrentPage === totalPages}
+                            >
+                              下一页
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 
-            <TabsContent value="production" className="mt-4">
+            <TabsContent value="quality" className="mt-4">
               <div className="space-y-4">
-                <h3 className="text-sm font-medium">生产班样数据趋势对比</h3>
+                <h3 className="text-sm font-medium">生产质量数据趋势对比</h3>
                 <Carousel className="w-full">
                   <CarouselContent>
                     <CarouselItem>
                       <ComparisonChart
-                        data={chartData.production.originalOre}
-                        title="原矿水份%对比"
-                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班原矿水份对比"
+                        data={fdxChartData.concentration}
+                        title="浓度趋势"
+                        description="富科浓度数据趋势"
                         lines={[
-                          { dataKey: "jinding_day_moisture" },
-                          { dataKey: "jinding_night_moisture" },
-                          { dataKey: "fudingxiang_day_moisture" },
-                          { dataKey: "fudingxiang_night_moisture" },
+                          { dataKey: "浓度", name: "浓度(%)" },
                         ]}
-                        trendText="显示四条数据线的白班夜班对比趋势"
+                        trendText="显示富科浓度数据的变化趋势"
                       />
                     </CarouselItem>
                     <CarouselItem>
                       <ComparisonChart
-                        data={chartData.production.originalOre}
-                        title="原矿Zn品位%对比"
-                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班原矿Zn品位对比"
+                        data={fdxChartData.concentration}
+                        title="细度趋势"
+                        description="富科细度数据趋势"
                         lines={[
-                          { dataKey: "jinding_day_zn_grade" },
-                          { dataKey: "jinding_night_zn_grade" },
-                          { dataKey: "fudingxiang_day_zn_grade" },
-                          { dataKey: "fudingxiang_night_zn_grade" },
+                          { dataKey: "细度", name: "细度(%)" },
                         ]}
-                        trendText="显示四条数据线的白班夜班对比趋势"
-                      />
-                    </CarouselItem>
-                    <CarouselItem>
-                      <ComparisonChart
-                        data={chartData.production.originalOre}
-                        title="原矿Pb品位%对比"
-                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班原矿Pb品位对比"
-                        lines={[
-                          { dataKey: "jinding_day_pb_grade" },
-                          { dataKey: "jinding_night_pb_grade" },
-                          { dataKey: "fudingxiang_day_pb_grade" },
-                          { dataKey: "fudingxiang_night_pb_grade" },
-                        ]}
-                        trendText="显示四条数据线的白班夜班对比趋势"
-                      />
-                    </CarouselItem>
-                    <CarouselItem>
-                      <ComparisonChart
-                        data={chartData.production.concentrate}
-                        title="精矿Zn品位%对比"
-                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班精矿Zn品位对比"
-                        lines={[
-                          { dataKey: "jinding_day_concentrate_zn" },
-                          { dataKey: "jinding_night_concentrate_zn" },
-                          { dataKey: "fudingxiang_day_concentrate_zn" },
-                          { dataKey: "fudingxiang_night_concentrate_zn" },
-                        ]}
-                        trendText="显示四条数据线的白班夜班对比趋势"
-                      />
-                    </CarouselItem>
-                    <CarouselItem>
-                      <ComparisonChart
-                        data={chartData.production.concentrate}
-                        title="精矿Pb品位%对比"
-                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班精矿Pb品位对比"
-                        lines={[
-                          { dataKey: "jinding_day_concentrate_pb" },
-                          { dataKey: "jinding_night_concentrate_pb" },
-                          { dataKey: "fudingxiang_day_concentrate_pb" },
-                          { dataKey: "fudingxiang_night_concentrate_pb" },
-                        ]}
-                        trendText="显示四条数据线的白班夜班对比趋势"
-                      />
-                    </CarouselItem>
-                    <CarouselItem>
-                      <ComparisonChart
-                        data={chartData.production.tailings}
-                        title="尾矿Zn品位%对比"
-                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班尾矿Zn品位对比"
-                        lines={[
-                          { dataKey: "jinding_day_tailings_zn" },
-                          { dataKey: "jinding_night_tailings_zn" },
-                          { dataKey: "fudingxiang_day_tailings_zn" },
-                          { dataKey: "fudingxiang_night_tailings_zn" },
-                        ]}
-                        trendText="显示四条数据线的白班夜班对比趋势"
-                      />
-                    </CarouselItem>
-                    <CarouselItem>
-                      <ComparisonChart
-                        data={chartData.production.tailings}
-                        title="尾矿Pb品位%对比"
-                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班尾矿Pb品位对比"
-                        lines={[
-                          { dataKey: "jinding_day_tailings_pb" },
-                          { dataKey: "jinding_night_tailings_pb" },
-                          { dataKey: "fudingxiang_day_tailings_pb" },
-                          { dataKey: "fudingxiang_night_tailings_pb" },
-                        ]}
-                        trendText="显示四条数据线的白班夜班对比趋势"
-                      />
-                    </CarouselItem>
-                    <CarouselItem>
-                      <ComparisonChart
-                        data={chartData.production.recovery}
-                        title="Zn回收率%对比"
-                        description="金鼎白班/夜班 VS 富鼎翔白班/夜班 Zn金属回收效率指标对比"
-                        lines={[
-                          { dataKey: "jinding_day_zn_recovery" },
-                          { dataKey: "jinding_night_zn_recovery" },
-                          { dataKey: "fudingxiang_day_zn_recovery" },
-                          { dataKey: "fudingxiang_night_zn_recovery" },
-                        ]}
-                        trendText="显示四条数据线的白班夜班对比趋势"
+                        trendText="显示富科细度数据的变化趋势"
                       />
                     </CarouselItem>
                   </CarouselContent>
@@ -2331,53 +2222,48 @@ function LabPageContent() {
                   <CarouselNext />
                 </Carousel>
 
-                {/* 生产数据表格 */}
+                {/* 浓细度对比数据表格 */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-medium mb-3">生产班样差值数据</h4>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-center">日期</TableHead>
-                          <TableHead className="text-center">班次</TableHead>
-                          <TableHead className="text-center">原矿水分差值(%)</TableHead>
-                          <TableHead className="text-center">原矿Zn品位差值(%)</TableHead>
-                          <TableHead className="text-center">精矿Zn品位差值(%)</TableHead>
-                          <TableHead className="text-center">Zn回收率差值(%)</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {comparisonData.production && comparisonData.production.length > 0 ? (
-                          comparisonData.production.map((item: any) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="text-center font-medium">
-                                {new Date(item.日期).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell className="text-center">{item.班次 || '--'}</TableCell>
-                              <TableCell className="text-center">
-                                {item['氧化锌原矿-水份（%）'] ? Number(item['氧化锌原矿-水份（%）']).toFixed(2) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['氧化锌原矿-Zn全品位（%）'] ? Number(item['氧化锌原矿-Zn全品位（%）']).toFixed(2) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['氧化锌精矿-Zn品位（%）'] ? Number(item['氧化锌精矿-Zn品位（%）']).toFixed(2) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['氧化矿Zn理论回收率（%）'] ? Number(item['氧化矿Zn理论回收率（%）']).toFixed(2) : '--'}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
-                              暂无生产班样对比数据
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <PaginatedTable
+                    data={comparisonData.concentration || []}
+                    columns={[
+                      {
+                        key: '日期',
+                        label: '日期',
+                        render: (value) => new Date(value).toLocaleDateString()
+                      },
+                      {
+                        key: '班次',
+                        label: '班次'
+                      },
+                      {
+                        key: '浓度(%)',
+                        label: '浓度(%)',
+                        render: (value) => value ? Number(value).toFixed(2) : '--'
+                      },
+                      {
+                        key: '细度(%)',
+                        label: '细度(%)',
+                        render: (value) => value ? Number(value).toFixed(2) : '--'
+                      },
+                      {
+                        key: '备注',
+                        label: '备注'
+                      }
+                    ]}
+                    title="浓细度对比数据"
+                    emptyMessage="暂无浓细度对比数据"
+                    exportFileName={`浓细度对比数据_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                    detailFields={[
+                      { key: '日期', label: '日期' },
+                      { key: '班次', label: '班次' },
+                      { key: '浓度(%)', label: '浓度(%)' },
+                      { key: '细度(%)', label: '细度(%)' },
+                      { key: '备注', label: '备注' },
+                      { key: '操作员', label: '操作员' },
+                      { key: '检测时间', label: '检测时间' }
+                    ]}
+                  />
                 </div>
               </div>
             </TabsContent>
@@ -2444,57 +2330,313 @@ function LabPageContent() {
 
                 {/* 出厂数据表格 */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-medium mb-3">出厂精矿差值数据</h4>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-center">日期</TableHead>
-                          <TableHead className="text-center">品位差值(%)</TableHead>
-                          <TableHead className="text-center">水分差值(%)</TableHead>
-                          <TableHead className="text-center">重量差值(t)</TableHead>
-                          <TableHead className="text-center">金属量差值(t)</TableHead>
-                          <TableHead className="text-center">发货单位</TableHead>
-                          <TableHead className="text-center">收货单位</TableHead>
-                          <TableHead className="text-center">流向</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {comparisonData.outgoing && comparisonData.outgoing.length > 0 ? (
-                          comparisonData.outgoing.map((item: any) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="text-center font-medium">
-                                {new Date(item.计量日期).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item.zn ? Number(item.zn).toFixed(2) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['水份(%)'] ? Number(item['水份(%)']).toFixed(2) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['湿重(t)'] ? Number(item['湿重(t)']).toFixed(1) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item['Zn^M'] ? Number(item['Zn^M']).toFixed(1) : '--'}
-                              </TableCell>
-                              <TableCell className="text-center">{item.发货单位名称 || '--'}</TableCell>
-                              <TableCell className="text-center">{item.收货单位名称 || '--'}</TableCell>
-                              <TableCell className="text-center">{item.流向 || '--'}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={8} className="text-center text-muted-foreground py-4">
-                              暂无出厂精矿对比数据
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <PaginatedTable
+                    data={comparisonData.outgoing || []}
+                    columns={[
+                      {
+                        key: '计量日期',
+                        label: '日期',
+                        render: (value) => new Date(value).toLocaleDateString()
+                      },
+                      {
+                        key: 'zn',
+                        label: '品位差值(%)',
+                        render: (value) => value ? Number(value).toFixed(2) : '--'
+                      },
+                      {
+                        key: '水份(%)',
+                        label: '水分差值(%)',
+                        render: (value) => value ? Number(value).toFixed(2) : '--'
+                      },
+                      {
+                        key: '湿重(t)',
+                        label: '重量差值(t)',
+                        render: (value) => value ? Number(value).toFixed(3) : '--'
+                      },
+                      {
+                        key: 'Zn^M',
+                        label: '金属量差值(t)',
+                        render: (value) => value ? Number(value).toFixed(3) : '--'
+                      },
+                      {
+                        key: '发货单位名称',
+                        label: '发货单位'
+                      },
+                      {
+                        key: '收货单位名称',
+                        label: '收货单位'
+                      },
+                      {
+                        key: '流向',
+                        label: '流向'
+                      }
+                    ]}
+                    title="出厂精矿差值数据"
+                    emptyMessage="暂无出厂精矿对比数据"
+                    exportFileName={`出厂精矿对比数据_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                    detailFields={[
+                      { key: '计量日期', label: '计量日期' },
+                      { key: 'zn', label: '品位差值(%)' },
+                      { key: '水份(%)', label: '水分差值(%)' },
+                      { key: '湿重(t)', label: '重量差值(t)' },
+                      { key: 'Zn^M', label: '金属量差值(t)' },
+                      { key: '发货单位名称', label: '发货单位' },
+                      { key: '收货单位名称', label: '收货单位' },
+                      { key: '流向', label: '流向' },
+                      { key: '备注', label: '备注' }
+                    ]}
+                  />
                 </div>
               </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* 🔥🔥🔥 数据对比分析汇总表格 🔥🔥🔥 */}
+      <Card id="summary-tables" className="mt-6 border-4 border-red-500 bg-red-50">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <CardTitle>🔥 数据对比分析汇总表格 🔥</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={refreshComparisonData}
+                disabled={isRefreshingComparison}
+                className="h-8 w-8"
+                title="刷新汇总数据"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshingComparison ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="incoming-summary" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="incoming-summary">进厂汇总</TabsTrigger>
+              <TabsTrigger value="production-summary">生产汇总</TabsTrigger>
+              <TabsTrigger value="quality-summary">质量汇总</TabsTrigger>
+              <TabsTrigger value="outgoing-summary">出厂汇总</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="incoming-summary" className="mt-4">
+              <PaginatedTable
+                data={comparisonData.incoming || []}
+                columns={[
+                  {
+                    key: '计量日期',
+                    label: '日期',
+                    render: (value) => new Date(value).toLocaleDateString()
+                  },
+                  {
+                    key: 'zn',
+                    label: '品位差值(%)',
+                    render: (value) => value ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '水份(%)',
+                    label: '水分差值(%)',
+                    render: (value) => value ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '湿重(t)',
+                    label: '重量差值(t)',
+                    render: (value) => value ? Number(value).toFixed(3) : '--'
+                  },
+                  {
+                    key: 'Zn^M',
+                    label: '金属量差值(t)',
+                    render: (value) => value ? Number(value).toFixed(3) : '--'
+                  },
+                  {
+                    key: '发货单位名称',
+                    label: '发货单位'
+                  },
+                  {
+                    key: '收货单位名称',
+                    label: '收货单位'
+                  }
+                ]}
+                title="进厂原矿对比汇总"
+                emptyMessage="暂无进厂原矿对比数据"
+                exportFileName={`进厂原矿汇总_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                detailFields={[
+                  { key: '计量日期', label: '计量日期' },
+                  { key: 'zn', label: '品位差值(%)' },
+                  { key: '水份(%)', label: '水分差值(%)' },
+                  { key: '湿重(t)', label: '重量差值(t)' },
+                  { key: 'Zn^M', label: '金属量差值(t)' },
+                  { key: '发货单位名称', label: '发货单位' },
+                  { key: '收货单位名称', label: '收货单位' },
+                  { key: '备注', label: '备注' }
+                ]}
+              />
+            </TabsContent>
+
+            <TabsContent value="production-summary" className="mt-4">
+              <PaginatedTable
+                data={comparisonData.production || []}
+                columns={[
+                  {
+                    key: '日期',
+                    label: '日期'
+                  },
+                  {
+                    key: '班次',
+                    label: '班次'
+                  },
+                  {
+                    key: '氧化锌原矿-水份（%）',
+                    label: '原矿水份(%)',
+                    render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '氧化锌原矿-Pb全品位（%）',
+                    label: '原矿Pb品位(%)',
+                    render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '氧化锌原矿-Zn全品位（%）',
+                    label: '原矿Zn品位(%)',
+                    render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '氧化锌精矿-Pb品位（%）',
+                    label: '精矿Pb品位(%)',
+                    render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '氧化锌精矿-Zn品位（%）',
+                    label: '精矿Zn品位(%)',
+                    render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '氧化矿Zn理论回收率（%）',
+                    label: 'Zn回收率(%)',
+                    render: (value) => value !== undefined ? Number(value).toFixed(2) : '--'
+                  }
+                ]}
+                title="生产班报对比汇总"
+                emptyMessage="暂无生产班报对比数据"
+                exportFileName={`生产班报汇总_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                detailFields={[
+                  { key: '日期', label: '日期' },
+                  { key: '班次', label: '班次' },
+                  { key: '氧化锌原矿-水份（%）', label: '原矿水份(%)' },
+                  { key: '氧化锌原矿-Pb全品位（%）', label: '原矿Pb品位(%)' },
+                  { key: '氧化锌原矿-Zn全品位（%）', label: '原矿Zn品位(%)' },
+                  { key: '氧化锌精矿-Pb品位（%）', label: '精矿Pb品位(%)' },
+                  { key: '氧化锌精矿-Zn品位（%）', label: '精矿Zn品位(%)' },
+                  { key: '氧化矿Zn理论回收率（%）', label: 'Zn回收率(%)' }
+                ]}
+              />
+            </TabsContent>
+
+            <TabsContent value="quality-summary" className="mt-4">
+              <PaginatedTable
+                data={comparisonData.concentration || []}
+                columns={[
+                  {
+                    key: '日期',
+                    label: '日期',
+                    render: (value) => new Date(value).toLocaleDateString()
+                  },
+                  {
+                    key: '班次',
+                    label: '班次'
+                  },
+                  {
+                    key: '浓度(%)',
+                    label: '浓度(%)',
+                    render: (value) => value ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '细度(%)',
+                    label: '细度(%)',
+                    render: (value) => value ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '备注',
+                    label: '备注'
+                  }
+                ]}
+                title="浓细度对比汇总"
+                emptyMessage="暂无浓细度对比数据"
+                exportFileName={`浓细度汇总_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                detailFields={[
+                  { key: '日期', label: '日期' },
+                  { key: '班次', label: '班次' },
+                  { key: '浓度(%)', label: '浓度(%)' },
+                  { key: '细度(%)', label: '细度(%)' },
+                  { key: '备注', label: '备注' },
+                  { key: '操作员', label: '操作员' },
+                  { key: '检测时间', label: '检测时间' }
+                ]}
+              />
+            </TabsContent>
+
+            <TabsContent value="outgoing-summary" className="mt-4">
+              <PaginatedTable
+                data={comparisonData.outgoing || []}
+                columns={[
+                  {
+                    key: '计量日期',
+                    label: '日期',
+                    render: (value) => new Date(value).toLocaleDateString()
+                  },
+                  {
+                    key: 'zn',
+                    label: '品位差值(%)',
+                    render: (value) => value ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '水份(%)',
+                    label: '水分差值(%)',
+                    render: (value) => value ? Number(value).toFixed(2) : '--'
+                  },
+                  {
+                    key: '湿重(t)',
+                    label: '重量差值(t)',
+                    render: (value) => value ? Number(value).toFixed(3) : '--'
+                  },
+                  {
+                    key: 'Zn^M',
+                    label: '金属量差值(t)',
+                    render: (value) => value ? Number(value).toFixed(3) : '--'
+                  },
+                  {
+                    key: '发货单位名称',
+                    label: '发货单位'
+                  },
+                  {
+                    key: '收货单位名称',
+                    label: '收货单位'
+                  },
+                  {
+                    key: '流向',
+                    label: '流向'
+                  }
+                ]}
+                title="出厂精矿对比汇总"
+                emptyMessage="暂无出厂精矿对比数据"
+                exportFileName={`出厂精矿汇总_${comparisonStartDate?.toISOString().split('T')[0]}_${comparisonEndDate?.toISOString().split('T')[0]}.csv`}
+                detailFields={[
+                  { key: '计量日期', label: '计量日期' },
+                  { key: 'zn', label: '品位差值(%)' },
+                  { key: '水份(%)', label: '水分差值(%)' },
+                  { key: '湿重(t)', label: '重量差值(t)' },
+                  { key: 'Zn^M', label: '金属量差值(t)' },
+                  { key: '发货单位名称', label: '发货单位' },
+                  { key: '收货单位名称', label: '收货单位' },
+                  { key: '流向', label: '流向' },
+                  { key: '备注', label: '备注' }
+                ]}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>

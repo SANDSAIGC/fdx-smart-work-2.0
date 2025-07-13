@@ -163,62 +163,59 @@ export async function POST(request: NextRequest) {
       productionPlanQueryUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent('生产计划-JDXY')}?select=*&生产周期=eq.${encodeURIComponent(cycle)}`;
     }
 
-    // 并行查询四个表的数据
-    const [rawMaterialResponse, productResponse, productionReportResponse, productionPlanResponse] = await Promise.all([
-      // 查询原料累计-JDXY表
-      fetch(rawMaterialQueryUrl, {
-        method: 'GET',
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        signal: AbortSignal.timeout(30000) // 30秒超时
-      }),
-      // 查询产品累计-JDXY表
-      fetch(productQueryUrl, {
-        method: 'GET',
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        signal: AbortSignal.timeout(30000) // 30秒超时
-      }),
-      // 查询生产班报-JDXY表
-      fetch(productionReportQueryUrl, {
-        method: 'GET',
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        signal: AbortSignal.timeout(30000) // 30秒超时
-      }),
-      // 查询生产计划-JDXY表
-      fetch(productionPlanQueryUrl, {
-        method: 'GET',
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        signal: AbortSignal.timeout(30000) // 30秒超时
-      })
-    ]);
+    // 定义重试函数
+    const fetchWithRetry = async (url: string, description: string, retries = 3): Promise<any> => {
+      for (let i = 0; i <= retries; i++) {
+        try {
+          console.log(`🔍 [核心生产数据API] ${description} - 第${i + 1}次尝试:`, url);
 
-    if (!rawMaterialResponse.ok || !productResponse.ok || !productionReportResponse.ok || !productionPlanResponse.ok) {
-      console.error('查询核心生产数据失败:', rawMaterialResponse.status, productResponse.status, productionReportResponse.status, productionPlanResponse.status);
-      return NextResponse.json(
-        { success: false, message: '查询失败' },
-        { status: 500 }
-      );
-    }
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'apikey': anonKey,
+              'Authorization': `Bearer ${anonKey}`,
+              'Content-Type': 'application/json'
+            },
+            signal: AbortSignal.timeout(45000) // 45秒超时
+          });
 
-    const rawMaterialData = await rawMaterialResponse.json();
-    const productData = await productResponse.json();
-    const productionReportData = await productionReportResponse.json();
-    const productionPlanData = await productionPlanResponse.json();
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          console.log(`✅ [核心生产数据API] ${description} 查询成功:`, { recordCount: data?.length || 0 });
+          return data;
+        } catch (error) {
+          console.error(`❌ [核心生产数据API] ${description} - 第${i + 1}次尝试失败:`, error);
+
+          if (i === retries) {
+            console.error(`❌ [核心生产数据API] ${description} - 所有重试都失败了`);
+            // 返回空数组而不是抛出错误，让其他查询继续
+            return [];
+          }
+
+          // 等待2秒后重试
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+      return [];
+    };
+
+    // 串行查询四个表的数据（避免并发超时）
+    console.log('🔄 [核心生产数据API] 开始串行查询数据...');
+
+    const rawMaterialData = await fetchWithRetry(rawMaterialQueryUrl, '原料累计-JDXY数据');
+    const productData = await fetchWithRetry(productQueryUrl, '产品累计-JDXY数据');
+    const productionReportData = await fetchWithRetry(productionReportQueryUrl, '生产班报-JDXY数据');
+    const productionPlanData = await fetchWithRetry(productionPlanQueryUrl, '生产计划-JDXY数据');
+
+    console.log('✅ [核心生产数据API] 所有数据查询完成:', {
+      rawMaterialCount: rawMaterialData?.length || 0,
+      productCount: productData?.length || 0,
+      productionReportCount: productionReportData?.length || 0,
+      productionPlanCount: productionPlanData?.length || 0
+    });
 
     // 聚合计算核心生产指标
     const coreIndicators = aggregateCoreProductionData(

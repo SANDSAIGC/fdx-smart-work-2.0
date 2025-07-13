@@ -26,6 +26,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieCha
 import { PieSectorDataItem } from "recharts/types/polar/Pie";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PaginatedTable } from "@/components/ui/paginated-table";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import ProductionDataChart from "@/components/charts/ProductionDataChart";
@@ -89,11 +90,10 @@ export default function BossPage() {
   const [selectedCycle, setSelectedCycle] = useState("全部周期");
   const [activeTab, setActiveTab] = useState("原料累计");
 
-  // 数据对比相关状态
+  // 数据对比相关状态 - 默认为全部周期的日期范围
   const [comparisonStartDate, setComparisonStartDate] = useState<Date | undefined>(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return date;
+    // 全部周期开始日期：2025年4月26日
+    return new Date('2025-04-26');
   });
   const [comparisonEndDate, setComparisonEndDate] = useState<Date | undefined>(new Date());
   const [isRefreshingComparison, setIsRefreshingComparison] = useState(false);
@@ -102,6 +102,9 @@ export default function BossPage() {
     outgoing: [],
     production: []
   });
+
+  // 数据对比分析生产周期状态
+  const [comparisonSelectedCycle, setComparisonSelectedCycle] = useState("全部周期");
 
   // 动态生产周期配置
   const [productionCycles, setProductionCycles] = useState<string[]>([]);
@@ -578,6 +581,35 @@ export default function BossPage() {
     setComparisonEndDate(end);
   }, []);
 
+  // 根据生产周期获取日期范围并自动同步
+  const syncComparisonDatesByCycle = React.useCallback(async (cycle: string) => {
+    try {
+      const response = await fetch(`/api/boss/production-cycle-dates?cycle=${encodeURIComponent(cycle)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        const startDate = new Date(result.data.startDate);
+        const endDate = new Date(result.data.endDate);
+        setComparisonStartDate(startDate);
+        setComparisonEndDate(endDate);
+        console.log(`🔄 [数据对比分析] 生产周期 "${cycle}" 日期范围已同步:`, result.data.startDate, '至', result.data.endDate);
+      } else {
+        console.error('获取生产周期日期范围失败:', result.message);
+      }
+    } catch (error) {
+      console.error('同步生产周期日期失败:', error);
+    }
+  }, []);
+
+  // 处理数据对比分析生产周期变更 - 临时版本，稍后会重新定义
+  const handleComparisonCycleChange = React.useCallback(async (cycle: string) => {
+    console.log(`🔄 [数据对比分析] 生产周期变更为: ${cycle}`);
+    setComparisonSelectedCycle(cycle);
+
+    // 先同步日期范围
+    await syncComparisonDatesByCycle(cycle);
+  }, [syncComparisonDatesByCycle]);
+
   // 生成模拟图表数据
   const generateMockChartData = React.useCallback(() => {
     const generateDateRange = (days: number) => {
@@ -620,10 +652,21 @@ export default function BossPage() {
   const refreshComparisonData = React.useCallback(async () => {
     setIsRefreshingComparison(true);
     try {
-      // 计算日期范围（最近一周）
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 7);
+      // 使用当前选择的日期范围，如果没有则使用默认值（最近一周）
+      let startDate = comparisonStartDate;
+      let endDate = comparisonEndDate;
+
+      if (!startDate || !endDate) {
+        endDate = new Date();
+        startDate = new Date();
+        startDate.setDate(endDate.getDate() - 7);
+      }
+
+      console.log(`🔄 [数据对比分析API] 使用日期范围:`, {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        selectedCycle: comparisonSelectedCycle
+      });
 
       // 调用真实API获取对比数据
       const response = await fetch('/api/lab/comparison-data', {
@@ -671,13 +714,37 @@ export default function BossPage() {
     } finally {
       setIsRefreshingComparison(false);
     }
-  }, []);
+  }, [comparisonStartDate, comparisonEndDate, comparisonSelectedCycle]);
+
+  // 重新定义处理数据对比分析生产周期变更函数（在refreshComparisonData定义之后）
+  const handleComparisonCycleChangeWithRefresh = React.useCallback(async (cycle: string) => {
+    console.log(`🔄 [数据对比分析] 生产周期变更为: ${cycle}`);
+    setComparisonSelectedCycle(cycle);
+
+    // 先同步日期范围
+    await syncComparisonDatesByCycle(cycle);
+
+    // 然后刷新数据对比分析数据
+    console.log(`🔄 [数据对比分析] 开始刷新数据...`);
+    await refreshComparisonData();
+  }, [syncComparisonDatesByCycle, refreshComparisonData]);
 
   // 客户端初始化数据（避免Hydration错误）
   useEffect(() => {
     // 初始化时自动获取对比数据
     refreshComparisonData();
   }, [refreshComparisonData]);
+
+  // 监听日期范围变化，自动刷新数据对比分析数据
+  useEffect(() => {
+    if (comparisonStartDate && comparisonEndDate) {
+      console.log(`🔄 [数据对比分析] 日期范围变化，自动刷新数据:`, {
+        startDate: comparisonStartDate.toISOString().split('T')[0],
+        endDate: comparisonEndDate.toISOString().split('T')[0]
+      });
+      refreshComparisonData();
+    }
+  }, [comparisonStartDate, comparisonEndDate]);
 
   // 单个Donut图表组件 - 优化版本
   const DonutChart = ({ data, title }: {
@@ -1242,6 +1309,16 @@ export default function BossPage() {
             production: { originalOre: [] },
             outgoing: { gradeAndMoisture: [], weightAndMetal: [] }
           }} // 空的图表数据结构
+          // 生产周期相关props
+          productionCycles={productionCycles}
+          selectedCycle={comparisonSelectedCycle}
+          onCycleChange={handleComparisonCycleChangeWithRefresh}
+          comparisonStartDate={comparisonStartDate}
+          comparisonEndDate={comparisonEndDate}
+          onDateChange={(start, end) => {
+            setComparisonStartDate(start);
+            setComparisonEndDate(end);
+          }}
         />
 
         {/* 数据对比分析 富科 */}
@@ -1253,6 +1330,16 @@ export default function BossPage() {
           badgeClassName="bg-green-600 text-white"
           onRefresh={refreshComparisonData}
           isRefreshing={isRefreshingComparison}
+          // 生产周期相关props
+          productionCycles={productionCycles}
+          selectedCycle={comparisonSelectedCycle}
+          onCycleChange={handleComparisonCycleChangeWithRefresh}
+          comparisonStartDate={comparisonStartDate}
+          comparisonEndDate={comparisonEndDate}
+          onDateChange={(start, end) => {
+            setComparisonStartDate(start);
+            setComparisonEndDate(end);
+          }}
         />
 
         {/* 多页面Cosplay */}
@@ -1292,7 +1379,7 @@ export default function BossPage() {
 
               {/* 浓细度记录 */}
               <div
-                onClick={() => router.push('/concentration-fineness-record')}
+                onClick={() => router.push('/concentration-fineness-monitor')}
                 className="relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 border-orange-500 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-950/30"
               >
                 <div className="flex flex-col items-center space-y-2">
