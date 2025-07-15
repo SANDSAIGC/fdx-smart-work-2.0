@@ -1,0 +1,358 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);  /* 亮色模式：橙色系 - 恢复原始颜色 */
+  --chart-2: oklch(0.6 0.118 184.704);    /* 亮色模式：青色系 - 恢复原始颜色 */
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --bar-negative-positive: #6366f1;  /* Bar Chart - Negative 正值颜色 */
+  --bar-negative-negative: #4f46e5;  /* Bar Chart - Negative 负值颜色 */
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);  /* 暗色模式：蓝紫色系 - 恢复原始颜色 */
+  --chart-2: oklch(0.696 0.17 162.48);    /* 暗色模式：绿色系 - 恢复原始颜色 */
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --bar-negative-positive: #8b5cf6;  /* Bar Chart - Negative 正值颜色（暗色模式） */
+  --bar-negative-negative: #6366f1;  /* Bar Chart - Negative 负值颜色（暗色模式） */
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* 移动端优化的柱状图样式 */
+  .mobile-optimized-chart {
+    @apply w-full;
+  }
+
+  .mobile-optimized-chart .recharts-cartesian-axis-tick-value {
+    @apply text-sm font-semibold;
+  }
+
+  .mobile-optimized-chart .recharts-label {
+    @apply text-xs font-medium;
+  }
+
+  /* 移动端图表标题优化 */
+  .chart-title-mobile {
+    @apply text-lg font-bold;
+  }
+
+  @media (min-width: 640px) {
+    .chart-title-mobile {
+      @apply text-xl;
+    }
+  }
+
+  /* 移动端图表描述优化 */
+  .chart-description-mobile {
+    @apply text-sm text-muted-foreground;
+  }
+
+  @media (min-width: 640px) {
+    .chart-description-mobile {
+      @apply text-base;
+    }
+  }
+
+  /* 亮色模式下的柱状图样式 - 参考示例配色 */
+  .bar-fdx {
+    fill: #4f46e5; /* 蓝色柱体 - 富鼎翔 */
+  }
+
+  .bar-jdxy {
+    fill: #6366f1; /* 稍浅的蓝色柱体 - 金鼎锌业 */
+  }
+
+  /* 暗色模式下的柱状图样式 - 参考示例配色 */
+  .dark .bar-fdx {
+    fill: #6366f1 !important; /* 暗色模式下的蓝色柱体 - 富鼎翔 */
+  }
+
+  .dark .bar-jdxy {
+    fill: #8b5cf6 !important; /* 暗色模式下的紫蓝色柱体 - 金鼎锌业 */
+  }
+
+  /* 柱状图容器优化 */
+  .chart-container-optimized {
+    @apply relative;
+  }
+
+  .chart-container-optimized::after {
+    content: '';
+    @apply absolute right-0 top-0 bottom-0 w-1/4 pointer-events-none;
+    background: transparent;
+  }
+
+  /* 生产累计数据大盘 - 柱状图文字样式（保持原始大小） */
+  .bar-label-text {
+    fill: white;
+    font-weight: 600;
+    font-size: 11px; /* 恢复原始字号 */
+  }
+
+  /* 数据对比分析 - 柱状图文字样式（再次缩小字号） */
+  .comparison-bar-label-text {
+    fill: white;
+    font-weight: 600;
+    font-size: 12px; /* 从15px进一步缩小到12px，确保完全显示 */
+  }
+
+  /* 确保在任何主题下文字都清晰可见 */
+  .dark .bar-label-text {
+    fill: white;
+  }
+
+  .dark .comparison-bar-label-text {
+    fill: white;
+  }
+
+  /* 数据对比分析 - 移动端响应式字号（基于12px调整） */
+  @media (max-width: 768px) {
+    .comparison-bar-label-text {
+      font-size: 10px; /* 平板端：12px * 0.83 ≈ 10px */
+    }
+  }
+
+  @media (max-width: 640px) {
+    .comparison-bar-label-text {
+      font-size: 9px; /* 小屏手机：12px * 0.75 ≈ 9px */
+    }
+  }
+
+  @media (max-width: 480px) {
+    .comparison-bar-label-text {
+      font-size: 8px; /* 超小屏手机：12px * 0.67 ≈ 8px */
+    }
+  }
+
+  /* 数据对比分析图表优化 */
+  .comparison-chart-container {
+    @apply w-full;
+  }
+
+  /* 图表底部标签间距优化 */
+  .comparison-chart-container .recharts-legend-wrapper {
+    @apply mt-4;
+  }
+
+  .comparison-chart-container .recharts-legend-item {
+    @apply mx-2;
+  }
+
+  /* 移动端图表标签优化 */
+  @media (max-width: 640px) {
+    .comparison-chart-container .recharts-legend-wrapper {
+      @apply mt-8;
+      padding-top: 24px !important;
+    }
+
+    .comparison-chart-container .recharts-legend-item {
+      @apply mx-1 text-xs;
+      margin-bottom: 6px !important;
+    }
+
+    .comparison-chart-container .recharts-legend-item-text {
+      @apply text-xs;
+      font-size: 11px !important;
+    }
+
+    /* 移动端图表底部边距增加 */
+    .comparison-chart-container .recharts-wrapper {
+      margin-bottom: 20px;
+    }
+  }
+
+  /* 确保图表标签不重叠 */
+  .comparison-chart-container .recharts-legend {
+    line-height: 1.5;
+  }
+
+  .comparison-chart-container .recharts-legend-item {
+    margin-bottom: 4px;
+  }
+
+  /* Bar Chart - Negative 响应式优化 */
+  .bar-chart-negative-responsive {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Bar Chart - Negative 柱体颜色优化 - 参考生产累计数据大盘风格 */
+  .bar-chart-negative-responsive .recharts-bar-rectangle {
+    /* 正值柱体：浅蓝色 #6366f1 */
+    /* 负值柱体：深蓝色 #4f46e5 */
+  }
+
+  /* 亮色模式柱体颜色 */
+  .bar-chart-negative-positive {
+    fill: var(--bar-negative-positive) !important; /* 正值：使用CSS变量 */
+  }
+
+  .bar-chart-negative-negative {
+    fill: var(--bar-negative-negative) !important; /* 负值：使用CSS变量 */
+  }
+
+  /* 暗色模式柱体颜色 */
+  .dark .bar-chart-negative-positive {
+    fill: var(--bar-negative-positive) !important; /* 正值：使用CSS变量 */
+  }
+
+  .dark .bar-chart-negative-negative {
+    fill: var(--bar-negative-negative) !important; /* 负值：使用CSS变量 */
+  }
+
+  /* 移动端 Bar Chart 优化 */
+  @media (max-width: 640px) {
+    .bar-chart-negative-responsive .recharts-cartesian-axis-tick-value {
+      font-size: 10px !important;
+    }
+
+    .bar-chart-negative-responsive .recharts-label {
+      font-size: 8px !important;
+    }
+
+    .bar-chart-negative-responsive .recharts-cartesian-grid-horizontal line {
+      stroke-opacity: 0.3;
+    }
+
+    /* 移动端卡片内边距优化 */
+    .bar-chart-negative-responsive .card-content {
+      padding: 0.75rem;
+    }
+
+    .bar-chart-negative-responsive .card-header {
+      padding: 0.75rem 0.75rem 0.5rem 0.75rem;
+    }
+
+    .bar-chart-negative-responsive .card-footer {
+      padding: 0.5rem 0.75rem 0.75rem 0.75rem;
+    }
+  }
+
+  /* 超小屏幕优化 */
+  @media (max-width: 480px) {
+    .bar-chart-negative-responsive .recharts-cartesian-axis-tick-value {
+      font-size: 8px !important;
+    }
+
+    .bar-chart-negative-responsive .recharts-label {
+      font-size: 7px !important;
+    }
+
+    .bar-chart-negative-responsive .card-title {
+      font-size: 0.875rem !important;
+    }
+
+    .bar-chart-negative-responsive .card-description {
+      font-size: 0.75rem !important;
+    }
+  }
+}
+
